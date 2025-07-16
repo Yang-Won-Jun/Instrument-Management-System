@@ -1,0 +1,3363 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>계측기 관리 시스템</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        /* 로그인 스타일 */
+        .login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        
+        .login-container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+        
+        .login-container h2 {
+            margin-bottom: 30px;
+            color: #2d3a4b;
+            font-size: 1.8em;
+        }
+        
+        .login-input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #d0d6e1;
+            border-radius: 7px;
+            font-size: 1em;
+            box-sizing: border-box;
+        }
+        
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(90deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            border-radius: 7px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .login-btn:hover {
+            background: linear-gradient(90deg, #2980b9, #1f5f8b);
+            transform: translateY(-2px);
+        }
+        
+        .error-message {
+            color: #e74c3c;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+        
+        .main-content {
+            display: block;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+        }
+        .app-container {
+            min-height: 100vh;
+            display: flex;
+        }
+        .sidebar {
+            width: 230px;
+            background: #2d3a4b;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 40px 0 0 0;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+        .sidebar .nav-link {
+            width: 100%;
+            padding: 18px 30px;
+            font-size: 1.1em;
+            color: #fff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            border-left: 4px solid transparent;
+            transition: background 0.2s, border-color 0.2s;
+            cursor: pointer;
+        }
+        .sidebar .nav-link.active {
+            background: #223047;
+            border-left: 4px solid #3498db;
+            font-weight: bold;
+        }
+        .sidebar .nav-link .icon {
+            margin-right: 12px;
+            font-size: 1.3em;
+        }
+        .main-content {
+            flex: 1;
+            padding: 40px 5vw 40px 5vw;
+            background: #f4f6fa;
+            min-height: 100vh;
+            margin-left: 230px;
+        }
+        .page-title {
+            font-size: 2.2em;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: #2d3a4b;
+        }
+        .section {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+            padding: 32px 24px;
+            margin-bottom: 32px;
+        }
+        /* 그래프 스타일 */
+        .bar-chart {
+            width: 100%;
+            max-width: 700px;
+            margin: 0 auto 30px auto;
+            padding: 30px 0 10px 0;
+        }
+        .bar-chart .bar-row {
+            display: flex;
+            align-items: flex-end;
+            margin-bottom: 18px;
+            position: relative;
+        }
+        .bar-chart .bar-label {
+            width: 60px;
+            text-align: right;
+            margin-right: 18px;
+            font-weight: 500;
+            color: #555;
+        }
+        .bar-chart .bar-group {
+            flex: 1;
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+        }
+        .bar {
+            height: 22px;
+            border-radius: 6px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            transition: width 0.4s;
+        }
+        .bar.plan {
+            background: linear-gradient(90deg, #74b9ff, #0984e3);
+            min-width: 10px;
+        }
+        .bar.actual {
+            background: linear-gradient(90deg, #55efc4, #00b894);
+            min-width: 10px;
+        }
+        .bar-value {
+            margin-left: 8px;
+            font-size: 0.95em;
+            color: #333;
+            font-weight: 500;
+        }
+        .bar-achieve {
+            margin-left: 16px;
+            font-size: 0.95em;
+            color: #e67e22;
+            font-weight: 700;
+        }
+        .bar-chart .bar-row:last-child {
+            margin-bottom: 0;
+        }
+        .bar-chart-legend {
+            display: flex;
+            gap: 24px;
+            justify-content: flex-end;
+            margin-bottom: 10px;
+        }
+        .bar-chart-legend span {
+            display: flex;
+            align-items: center;
+            font-size: 0.98em;
+            color: #555;
+        }
+        .bar-chart-legend .legend-box {
+            width: 18px;
+            height: 12px;
+            border-radius: 3px;
+            margin-right: 7px;
+            display: inline-block;
+        }
+        .legend-plan { background: linear-gradient(90deg, #74b9ff, #0984e3); }
+        .legend-actual { background: linear-gradient(90deg, #55efc4, #00b894); }
+        /* 폼 스타일 */
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; margin-bottom: 6px; font-weight: 500; }
+        .form-group input, .form-group select {
+            width: 100%; padding: 12px; border: 1.5px solid #d0d6e1; border-radius: 7px; font-size: 1em;
+        }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #3498db; }
+        .btn {
+            background: linear-gradient(90deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 500;
+            transition: background 0.2s;
+            margin-top: 10px;
+        }
+        .btn:hover { background: linear-gradient(90deg, #2980b9, #3498db); }
+        /* 이력관리 */
+        .instrument-list { margin-top: 10px; }
+        .instrument-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px 18px;
+            margin-bottom: 10px;
+            border-left: 4px solid #3498db;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .instrument-item:hover { background: #eaf6ff; }
+        .history-list { margin-top: 18px; }
+        .history-year { font-weight: bold; color: #2d3a4b; margin-top: 18px; }
+        .history-entry { margin-left: 18px; margin-bottom: 8px; }
+        /* 연도별 현황 */
+        .year-summary {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            margin: 30px 0 0 0;
+        }
+        .year-summary .summary-box {
+            background: #f0f4fa;
+            border-radius: 10px;
+            padding: 18px 32px;
+            min-width: 180px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .year-summary .summary-title {
+            color: #2980b9;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .year-summary .summary-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2d3a4b;
+        }
+        @media (max-width: 900px) {
+            .main-content { padding: 20px 2vw; }
+            .sidebar { width: 60px; padding: 20px 0 0 0; }
+            .sidebar .nav-link { padding: 14px 10px; font-size: 1em; justify-content: center; }
+            .sidebar .nav-link .icon { margin-right: 0; }
+            .sidebar .nav-link span { display: none; }
+            .year-summary { flex-direction: column; gap: 10px; }
+        }
+        .pdf-link { color: #e67e22; text-decoration: underline; cursor: pointer; font-weight: 500; }
+        /* 계측기 List 테이블 스타일 추가 */
+        .instrument-list-container {
+            overflow-x: auto;
+            max-width: 100%;
+        }
+        .instrument-list-table {
+            min-width: 1200px;
+            font-size: 0.9em;
+        }
+        .instrument-list-table input,
+        .instrument-list-table select {
+            width: 100%;
+            padding: 4px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+        .instrument-list-table input[type="date"] {
+            width: 120px;
+        }
+        .instrument-list-table input[type="number"] {
+            width: 60px;
+        }
+        .instrument-list-table th {
+            white-space: nowrap;
+            padding: 8px 4px;
+        }
+        .instrument-list-table td {
+            padding: 4px;
+        }
+    </style>
+    <script>
+    // 한글 폰트 관련 코드 제거 - jsPDF 오류 방지
+    </script>
+</head>
+<body>
+    <!-- 로그인 오버레이 -->
+    <div id="loginOverlay" class="login-overlay">
+        <div class="login-container">
+            <h2>🔐 계측기 관리 시스템</h2>
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <input type="text" id="username" class="login-input" placeholder="사용자명" required>
+                <input type="password" id="password" class="login-input" placeholder="비밀번호" required>
+                <button type="submit" class="login-btn">로그인</button>
+            </form>
+            <div id="loginError" class="error-message" style="display: none;"></div>
+        </div>
+    </div>
+
+    <div class="app-container">
+    <nav class="sidebar" style="padding:0; width:230px;">
+        <div style="width:230px; height:100px; margin:0; padding:0; display:flex; align-items:center; justify-content:center;">
+            <img src="Image/isu-logo.png" alt="ISU SPECIALTY CHEMICAL"
+                 style="width:230px; height:100px; display:block; object-fit:contain; margin:0; padding:0;">
+        </div>
+        <a class="nav-link active" id="nav-home" data-page="home" style="padding:0 12px; font-size:1em; height:90px; line-height:90px;"><span class="icon">🏠</span><span>홈</span></a>
+        <a class="nav-link" id="nav-register" data-page="register" style="padding:0 12px; font-size:1em; height:90px; line-height:90px;"><span class="icon">📝</span><span>계측기 등록</span></a>
+        <a class="nav-link" id="nav-list" data-page="list" style="padding:0 12px; font-size:1em; height:90px; line-height:90px;"><span class="icon">📋</span><span>계측기 List</span></a>
+        <a class="nav-link" id="nav-status" data-page="status" style="padding:0 12px; font-size:1em; height:90px; line-height:90px;"><span class="icon">📊</span><span>계측기 검교정 현황</span></a>
+        <a class="nav-link" id="nav-history" data-page="history" style="padding:0 12px; font-size:1em; height:90px; line-height:90px;"><span class="icon">📚</span><span>계측기 이력관리</span></a>
+        
+        <!-- 로그아웃 버튼 -->
+        <div style="margin-top: auto; padding: 20px;">
+            <button onclick="logout()" style="width: 100%; padding: 12px; background: linear-gradient(90deg, #e74c3c, #c0392b); color: white; border: none; border-radius: 7px; font-size: 1em; cursor: pointer;">
+                🚪 로그아웃
+            </button>
+        </div>
+    </nav>
+    <main class="main-content">
+        <!-- 공통 헤더 제거됨 -->
+        
+        <!-- 홈화면 -->
+        <section id="page-home" class="section">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                <div class="page-title">계측기 관리 시스템</div>
+                <div id="current-date" style="font-size:1.1em;color:#666;font-weight:500;"></div>
+            </div>
+            
+            <!-- 전체 계획 대비 실적 가로 막대 그래프 -->
+            <div style="margin-bottom:30px; padding:25px; background:#f8f9fa; border-radius:12px; max-width:720px; margin-left:auto; margin-right:auto; display:flex; flex-direction:column; align-items:center;">
+                <h3 style="margin-bottom:20px; color:#2d3a4b; font-size:1.3em; text-align:center;" id="overall-progress-title">전체 계획 대비 실적</h3>
+                <div id="home-overall-progress" style="margin-bottom:15px; width:100%;"></div>
+                <div id="home-overall-percentage" style="text-align:center; font-size:1.2em; font-weight:600; color:#3498db;"></div>
+            </div>
+            
+            <!-- 월별 계획 대비 실적 -->
+            <div style="margin-bottom:30px;">
+                <h3 style="margin-bottom:20px; color:#2d3a4b; font-size:1.2em;">월별 계획 대비 실적</h3>
+                <div class="bar-chart-legend">
+                    <span><span class="legend-box legend-plan"></span>계획</span>
+                    <span><span class="legend-box legend-actual"></span>실적</span>
+                </div>
+                <div class="bar-chart" id="home-bar-chart"></div>
+                <div style="text-align:right; margin-top:10px;">
+                    <a href="#" id="more-status-link" style="color:#2980b9; text-decoration:underline; font-weight:500;">+ 더보기</a>
+                </div>
+            </div>
+            
+            <div class="year-summary" id="home-year-summary"></div>
+            <div class="section" style="margin-top:30px;">
+                <div style="font-weight:600; margin-bottom:10px;">계측기 검색</div>
+                <input type="text" id="search-instrument" placeholder="계측기명을 입력하세요" style="width:250px; padding:8px; border-radius:6px; border:1.5px solid #d0d6e1;">
+                <div id="search-result" style="margin-top:15px;"></div>
+            </div>
+        </section>
+        <!-- 계측기 등록 -->
+        <section id="page-register" class="section" style="display:none;">
+            <div class="page-title">계측기 등록</div>
+            
+            <!-- Excel 일괄 등록 섹션 추가 -->
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+                <h3 style="margin-top: 0; color: #2d3a4b;">📊 Excel 파일 일괄 등록</h3>
+                <p style="color: #666; margin-bottom: 15px;">Excel 파일을 업로드하여 계측기를 일괄 등록할 수 있습니다.</p>
+                
+                <div style="margin-bottom: 15px;">
+                    <label for="excel-file" style="display: block; margin-bottom: 5px; font-weight: 500;">Excel/CSV 파일 선택:</label>
+                    <input type="file" id="excel-file" accept=".xlsx,.xls,.csv" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" onchange="resetExcelPreview()">
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <button type="button" onclick="uploadExcelFile()" class="btn" style="background: linear-gradient(90deg, #27ae60, #2ecc71);">
+                        📤 Excel 파일 업로드 및 일괄 등록
+                    </button>
+                </div>
+                
+                <div id="excel-preview" style="display: none; margin-top: 15px;">
+                    <h4>📋 업로드된 데이터 미리보기</h4>
+                    <div id="excel-data-preview" style="max-height: 300px; overflow-y: auto; background: white; border: 1px solid #ddd; border-radius: 4px; padding: 10px;"></div>
+                    <button type="button" onclick="confirmExcelUpload()" class="btn" style="background: linear-gradient(90deg, #3498db, #2980b9); margin-top: 10px;">
+                        ✅ 일괄 등록 확인
+                    </button>
+                </div>
+            </div>
+            
+            <div style="border-top: 2px solid #e0e0e0; padding-top: 20px; margin-top: 20px;">
+                <h3 style="margin-top: 0; color: #2d3a4b;">📝 개별 계측기 등록</h3>
+                <form id="register-form">
+                <div class="form-group"><label>계측기명</label><input type="text" id="reg-name" required></div>
+                <div class="form-group"><label>Service</label><input type="text" id="reg-service" required></div>
+                <div class="form-group"><label>계측기 유형</label><input type="text" id="reg-type" required></div>
+                <div class="form-group">
+                  <label>등록 연도</label>
+                  <select id="reg-year" required onchange="updateCalibrationNumber()">
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>교정번호</label>
+                  <div style="display:flex;align-items:center;">
+                    <span id="reg-year-prefix" style="margin-right:4px;font-weight:bold;color:#2980b9;"></span>
+                    <span style="margin-right:2px; font-weight:bold; color:#2980b9;">(계)-</span>
+                    <input type="text" id="reg-num" required placeholder="숫자만 입력 (예: 001)" style="flex:1;">
+                  </div>
+                </div>
+                <div class="form-group"><label>교정일</label><input type="date" id="reg-date" required></div>
+                <div class="form-group"><label>교정주기</label><div style="display:flex;align-items:center;"><input type="number" id="reg-cycle" min="1" required style="width:80px;"><span style="margin-left:6px;">년</span></div></div>
+                <div class="form-group"><label>차기 교정 예정일</label><input type="date" id="reg-next-date" readonly></div>
+                <div class="form-group">
+                  <label>허용오차</label>
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:1.2em;">±</span>
+                    <input type="text" id="reg-allow-error" required style="width:80px;">
+                    <select id="reg-measurement-type" style="width:100px;">
+                      <option value="">선택</option>
+                      <option value="온도">온도</option>
+                      <option value="유량">유량</option>
+                      <option value="레벨">레벨</option>
+                      <option value="압력">압력</option>
+                    </select>
+                    <select id="reg-unit" style="width:80px;" onchange="toggleCustomUnit()">
+                      <option value="">단위</option>
+                    </select>
+                    <input type="text" id="reg-custom-unit" placeholder="직접입력" style="width:80px;display:none;">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>검교정 구분</label>
+                  <select id="reg-calib-type" required onchange="toggleExternalFields()">
+                    <option value="자체">자체 검교정</option>
+                    <option value="외부">외부 검교정</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>사용 검교정기</label>
+                  <input type="text" id="reg-calibration-equipment" required>
+                </div>
+                <button type="submit" class="btn">등록</button>
+            </form>
+        </section>
+        <!-- 계측기 검교정 현황 -->
+        <section id="page-status" class="section" style="display:none;">
+            <div class="page-title">계측기 검교정 현황</div>
+            <div style="margin-bottom:18px;display:flex;align-items:center;gap:10px;">
+                <label for="status-year">연도 선택:</label>
+                <select id="status-year" onchange="renderStatusList();renderStatusInputs();renderStatusChart();renderHomeYearSummary();">
+                    <option value="2025">2025</option>
+                </select>
+            </div>
+            <div id="status-instrument-list"></div>
+            <form id="status-form" style="margin-top:30px;">
+                <div style="margin-bottom:18px;">월별 계획 및 실적을 입력하세요.</div>
+                <div id="status-inputs"></div>
+                <button type="submit" class="btn">저장</button>
+            </form>
+            <div class="bar-chart-legend" style="margin-top:30px;">
+                <span><span class="legend-box legend-plan"></span>계획</span>
+                <span><span class="legend-box legend-actual"></span>실적</span>
+            </div>
+            <div class="bar-chart" id="status-bar-chart"></div>
+        </section>
+        <!-- 계측기 이력관리 -->
+        <section id="page-history" class="section" style="display:none;">
+            <div class="page-title">계측기 이력관리</div>
+            <div class="instrument-list" id="history-instrument-list"></div>
+            <div id="history-detail" style="display:block; margin-top:10px; border:2px solid red; background:#fff;"></div>
+        </section>
+        <!-- 계측기 List -->
+        <section id="page-list" class="section" style="display:none;">
+            <div class="page-title">계측기 List</div>
+            <div style="margin-bottom:18px;display:flex;align-items:center;gap:10px;justify-content:space-between;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <label for="list-year">연도 선택:</label>
+                    <select id="list-year" onchange="renderInstrumentList();"></select>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <button class="btn" id="edit-mode-btn" onclick="toggleEditMode()" disabled>수정</button>
+                    <button class="btn" id="save-btn" onclick="saveInstrumentListChanges()" style="display:none;">저장</button>
+                    <button class="btn" id="delete-btn" onclick="deleteSelectedInstruments()" style="background:linear-gradient(90deg, #e74c3c, #c0392b);" disabled>삭제</button>
+                </div>
+            </div>
+            <div class="instrument-list-container">
+                <div id="instrument-list-table"></div>
+            </div>
+        </section>
+    </main>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+<script src="NotoSansKR-VariableFont_wght-normal.js"></script>
+<script>
+// 로그인 처리 함수
+function handleLogin(event) {
+    event.preventDefault();
+    
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const errorDiv = document.getElementById('loginError');
+    
+    // 간단한 로그인 검증 (실제 환경에서는 서버에서 검증해야 함)
+    if (username === 'admin' && password === '1234') {
+        // 로그인 성공
+        localStorage.setItem('isLoggedIn', 'true');
+        showMainContent();
+    } else {
+        // 로그인 실패
+        errorDiv.textContent = '사용자명 또는 비밀번호가 올바르지 않습니다.';
+        errorDiv.style.display = 'block';
+    }
+}
+
+// 메인 콘텐츠 표시 함수
+function showMainContent() {
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.querySelector('.app-container').style.display = 'flex';
+    
+    // 기존 초기화 함수들 호출
+    initializeApp();
+}
+
+// 앱 초기화 함수
+function initializeApp() {
+    console.log('앱 초기화 시작');
+    
+    try {
+        // 네비게이션 링크에 이벤트 리스너 추가
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const page = this.getAttribute('data-page');
+                showPage(page);
+            });
+        });
+        
+        // 더보기 링크에 이벤트 리스너 추가
+        const moreStatusLink = document.getElementById('more-status-link');
+        if (moreStatusLink) {
+            moreStatusLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                showPage('status');
+            });
+        }
+        
+        // 기본 데이터 초기화
+        if (!instrumentsByYear || Object.keys(instrumentsByYear).length === 0) {
+            instrumentsByYear = {"2025": []};
+            localStorage.setItem('instrumentsByYear', JSON.stringify(instrumentsByYear));
+        }
+
+        // deleted: true 데이터 완전 삭제
+        Object.keys(instrumentsByYear).forEach(year => {
+            instrumentsByYear[year] = (instrumentsByYear[year] || []).filter(inst => !inst.deleted);
+        });
+        localStorage.setItem('instrumentsByYear', JSON.stringify(instrumentsByYear));
+        
+        // 연도 옵션 초기화
+        if (typeof initializeYearOptions === 'function') {
+            initializeYearOptions();
+        }
+        
+        // 교정번호 접두사 초기화
+        if (typeof updateCalibrationNumber === 'function') {
+            updateCalibrationNumber();
+        }
+        
+        // 홈 화면 초기화
+        if (typeof displayCurrentDate === 'function') {
+            displayCurrentDate();
+        }
+        if (typeof renderHomeChart === 'function') {
+            renderHomeChart();
+        }
+        if (typeof renderHomeOverallProgress === 'function') {
+            renderHomeOverallProgress();
+        }
+        if (typeof renderHomeYearSummary === 'function') {
+            renderHomeYearSummary();
+        }
+        
+        // 검색 기능 초기화
+        const searchInput = document.getElementById('search-instrument');
+        if (searchInput) {
+            searchInput.oninput = function(){
+                const q = searchInput.value.trim();
+                if(!q){
+                    document.getElementById('search-result').innerHTML='';
+                    return;
+                }
+                const currentYear = new Date().getFullYear().toString();
+                const list = instrumentsByYear[currentYear]||[];
+                const found = list.find(inst=>inst.name===q);
+                if(!found){
+                    document.getElementById('search-result').innerHTML='<span style="color:#888;">검색 결과가 없습니다.</span>';
+                    return;
+                }
+                document.getElementById('search-result').innerHTML = `
+                    <div style='background:#f8f9fa;padding:18px;border-radius:10px;'>
+                        <div><b>계측기명:</b> ${found.name}</div>
+                        <div><b>Service:</b> ${found.service}</div>
+                        <div><b>유형:</b> ${found.type}</div>
+                        <div><b>교정번호:</b> ${found.num}</div>
+                        <div><b>교정일:</b> ${found.date}</div>
+                        <div><b>교정주기:</b> ${found.cycle}</div>
+                        <div><b>차기 교정 예정일:</b> ${found.nextDate}</div>
+                        <div><b>허용오차:</b> ±${found.allowError}${found.unit ? ' ' + found.unit : ''}</div>
+                        <div><b>검교정 일자:</b> ${found.calibDate||'-'}</div>
+                        <div><b>최대오차:</b> ${found.maxError||'-'}</div>
+                        <div><b>검교정 결과:</b> ${found.result||'-'}</div>
+                    </div>
+                `;
+            }
+        }
+        
+        console.log('앱 초기화 완료');
+    } catch (error) {
+        console.error('앱 초기화 중 오류:', error);
+    }
+}
+
+// 로그아웃 함수
+function logout() {
+    localStorage.removeItem('isLoggedIn');
+    location.reload();
+}
+
+// 로그인 상태 확인 및 초기화
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('페이지 로드 시작');
+    
+    // 로그인 상태 확인
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    
+    // 디버깅: 로그인 상태 출력
+    console.log('로그인 상태:', isLoggedIn);
+    
+    if (isLoggedIn) {
+        // 이미 로그인된 경우
+        console.log('이미 로그인됨 - 메인 콘텐츠 표시');
+        showMainContent();
+    } else {
+        // 로그인되지 않은 경우
+        console.log('로그인되지 않음 - 로그인 화면 표시');
+        document.querySelector('.app-container').style.display = 'none';
+        document.getElementById('loginOverlay').style.display = 'flex';
+    }
+});
+
+// SPA 라우팅
+function showPage(page) {
+    try {
+        console.log('페이지 전환:', page);
+        
+        document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        
+        if(page==='register') {
+            document.getElementById('page-register').style.display = '';
+            document.getElementById('nav-register').classList.add('active');
+        } else if(page==='list') {
+            document.getElementById('page-list').style.display = '';
+            document.getElementById('nav-list').classList.add('active');
+            renderInstrumentList();
+        } else if(page==='status') {
+            document.getElementById('page-status').style.display = '';
+            document.getElementById('nav-status').classList.add('active');
+            renderStatusList();
+            renderStatusInputs();
+            renderStatusChart();
+        } else if(page==='history') {
+            document.getElementById('page-history').style.display = '';
+            document.getElementById('nav-history').classList.add('active');
+            renderHistoryList();
+        } else {
+            document.getElementById('page-home').style.display = '';
+            document.getElementById('nav-home').classList.add('active');
+            displayCurrentDate();
+            renderHomeChart();
+            renderHomeOverallProgress();
+            renderHomeYearSummary();
+        }
+        document.getElementById('history-detail').style.display = 'none';
+        
+        console.log('페이지 전환 완료:', page);
+    } catch (error) {
+        console.error('페이지 전환 오류:', error);
+        alert('페이지 전환 중 오류가 발생했습니다. 페이지를 새로고침해주세요.');
+    }
+}
+// 월별 계획/실적 데이터(연도별)
+let statusDataByYear = {
+    '2025': [
+        {month:'1월', plan:10, actual:8},
+        {month:'2월', plan:12, actual:12},
+        {month:'3월', plan:15, actual:13},
+        {month:'4월', plan:14, actual:10},
+        {month:'5월', plan:16, actual:15},
+        {month:'6월', plan:18, actual:17},
+        {month:'7월', plan:20, actual:19},
+        {month:'8월', plan:15, actual:14},
+        {month:'9월', plan:13, actual:12},
+        {month:'10월', plan:17, actual:16},
+        {month:'11월', plan:19, actual:18},
+        {month:'12월', plan:21, actual:20}
+    ]
+};
+
+// 현재 선택된 연도의 데이터를 가져오는 함수
+function getCurrentStatusData() {
+    const year = document.getElementById('status-year').value;
+    if (!statusDataByYear[year]) {
+        // 해당 연도의 데이터가 없으면 기본 데이터 생성
+        statusDataByYear[year] = [
+            {month:'1월', plan:0, actual:0},
+            {month:'2월', plan:0, actual:0},
+            {month:'3월', plan:0, actual:0},
+            {month:'4월', plan:0, actual:0},
+            {month:'5월', plan:0, actual:0},
+            {month:'6월', plan:0, actual:0},
+            {month:'7월', plan:0, actual:0},
+            {month:'8월', plan:0, actual:0},
+            {month:'9월', plan:0, actual:0},
+            {month:'10월', plan:0, actual:0},
+            {month:'11월', plan:0, actual:0},
+            {month:'12월', plan:0, actual:0}
+        ];
+    }
+    return statusDataByYear[year];
+}
+// 계측기 데이터(연도별)
+// localStorage에서 데이터 불러오기 또는 기본값 설정
+let instrumentsByYear;
+try {
+    const savedData = localStorage.getItem('instrumentsByYear');
+    if (savedData) {
+        instrumentsByYear = JSON.parse(savedData);
+        console.log('localStorage에서 데이터 로드:', instrumentsByYear);
+    } else {
+        instrumentsByYear = {"2025": []};
+        console.log('기본 데이터로 초기화');
+    }
+} catch (error) {
+    console.error('데이터 로드 오류:', error);
+    instrumentsByYear = {"2025": []};
+    localStorage.setItem('instrumentsByYear', JSON.stringify(instrumentsByYear));
+}
+
+// 기존 데이터에 ID 추가하는 함수
+function addIdsToExistingInstruments() {
+    Object.keys(instrumentsByYear).forEach(year => {
+        const list = instrumentsByYear[year] || [];
+        list.forEach(inst => {
+            if (!inst.id) {
+                inst.id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+            }
+        });
+    });
+}
+
+// 페이지 로드 시 기존 데이터에 ID 추가
+addIdsToExistingInstruments();
+
+// 현재 날짜 표시 함수
+function displayCurrentDate() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const day = now.getDate();
+    const dateElement = document.getElementById('current-date');
+    if (dateElement) {
+        dateElement.textContent = `${year}년 ${month}월 ${day}일`;
+    }
+}
+// 홈화면 그래프
+function renderHomeChart() {
+    const chart = document.getElementById('home-bar-chart');
+    chart.innerHTML = '';
+    const statusData = getCurrentStatusData();
+    statusData.forEach(row => {
+        const achieve = row.plan ? Math.round(row.actual/row.plan*100) : 0;
+        chart.innerHTML += `
+            <div class="bar-row">
+                <div class="bar-label">${row.month}</div>
+                <div class="bar-group">
+                    <div class="bar plan" style="width:${row.plan*10}px;" title="계획">${row.plan}</div>
+                </div>
+                <div class="bar-group">
+                    <div class="bar actual" style="width:${row.actual*10}px;" title="실적">${row.actual}</div>
+                    <span class="bar-achieve">${achieve}%</span>
+                </div>
+            </div>
+        `;
+    });
+    
+    // 전체 진행률 그래프도 업데이트
+    renderHomeOverallProgress();
+}
+// 홈화면 연도별 현황
+function renderHomeYearSummary() {
+    const currentYear = new Date().getFullYear().toString();
+
+    // 현재 연도까지 등록된 모든 계측기를 수집
+    let allInstruments = [];
+    Object.keys(instrumentsByYear).forEach(year => {
+        if (parseInt(year) <= parseInt(currentYear)) {
+            const yearList = instrumentsByYear[year] || [];
+            allInstruments = allInstruments.concat(yearList);
+        }
+    });
+
+    // 삭제된 계측기(이상한 데이터, deleted:true 포함) 제외
+    const validInstruments = allInstruments.filter(i => i && i.num && i.name && !i.deleted);
+
+    const total = validInstruments.length;
+    const completed = validInstruments.filter(i => isCompleted(i, currentYear)).length;
+    const scheduled = validInstruments.filter(i => !isCompleted(i, currentYear)).length;
+
+    document.getElementById('home-year-summary').innerHTML = `
+        <div class="summary-box">
+            <div class="summary-title">${currentYear}년 등록 계측기</div>
+            <div class="summary-value">${total}</div>
+        </div>
+        <div class="summary-box">
+            <div class="summary-title">검교정 완료</div>
+            <div class="summary-value">${completed}</div>
+        </div>
+        <div class="summary-box">
+            <div class="summary-title">교정 예정</div>
+            <div class="summary-value">${scheduled}</div>
+        </div>
+    `;
+}
+// 계측기 등록
+let instruments = [];
+document.getElementById('register-form').onsubmit = function(e){
+    e.preventDefault();
+    const name = document.getElementById('reg-name').value;
+    const service = document.getElementById('reg-service').value;
+    const type = document.getElementById('reg-type').value;
+    const year = document.getElementById('reg-year').value.trim();
+    const numSuffix = document.getElementById('reg-num').value;
+    let num = year + '(계)-' + numSuffix; // 교정번호를 '년도(계)-'로 시작하도록 조합
+    const date = document.getElementById('reg-date').value;
+    const cycle = parseInt(document.getElementById('reg-cycle').value);
+    const nextDate = document.getElementById('reg-next-date').value;
+    const allowError = document.getElementById('reg-allow-error').value;
+    const measurementType = document.getElementById('reg-measurement-type').value;
+    const unitSelect = document.getElementById('reg-unit').value;
+    const customUnit = document.getElementById('reg-custom-unit').value;
+    const unit = unitSelect === '직접입력' ? customUnit : unitSelect;
+    const calibTypeValue = document.getElementById('reg-calib-type').value;
+    const calibType = calibTypeValue === '자체' ? '자체 검교정' : '외부 검교정';
+    const calibEquipment = document.getElementById('reg-calibration-equipment').value;
+    
+    // year, calibType 값 로그 출력
+    console.log('[등록 디버그] year:', year, '| calibType:', calibType);
+    
+    // 외부 검교정인 경우 num 값을 빈 문자열로 설정
+    if (calibType === '외부 검교정') {
+        num = '';
+        console.log('[외부 검교정 디버그] 교정번호를 빈 문자열로 설정:', num);
+    }
+    
+    // 중복 검사
+    let duplicateName = false;
+    let duplicateNumber = false;
+    
+    // 모든 연도에서 계측기명 중복 검사
+    Object.keys(instrumentsByYear).forEach(y => {
+        const list = instrumentsByYear[y] || [];
+        const nameExists = list.some(inst => inst.name === name);
+        if (nameExists) {
+            duplicateName = true;
+        }
+    });
+    
+    // 교정번호 중복 검사 (자체 검교정인 경우만)
+    if (calibType === '자체 검교정') {
+        Object.keys(instrumentsByYear).forEach(y => {
+            const list = instrumentsByYear[y] || [];
+            const numberExists = list.some(inst => inst.num === num);
+            if (numberExists) {
+                duplicateNumber = true;
+            }
+        });
+    }
+    
+    // 중복 알림
+    if (duplicateName) {
+        alert('동일한 계측기명이 이미 등록되어 있습니다.');
+        return;
+    }
+    
+    if (duplicateNumber) {
+        alert('동일한 교정번호가 이미 등록되어 있습니다.');
+        return;
+    }
+    
+    const newInst = {
+        id: Date.now().toString(), 
+        name, service, type, num, date, cycle, nextDate, 
+        allowError, measurementType, unit,
+        calibDate:'', maxError:'', result:'', year, 
+        history:[], calibType, calibEquipment, file: null
+    };
+    
+    if(!instrumentsByYear[year]) instrumentsByYear[year]=[];
+    instrumentsByYear[year].push(newInst);
+    
+    // localStorage에 저장
+    localStorage.setItem('instrumentsByYear', JSON.stringify(instrumentsByYear));
+    
+    // 등록 후 해당 연도 배열 로그 출력
+    console.log('[등록 디버그] instrumentsByYear[', year, ']:', instrumentsByYear[year]);
+    
+    alert('계측기가 등록되었습니다!');
+    document.getElementById('register-form').reset();
+    
+    // 폼 리셋 후 약간의 지연을 두고 교정번호 접두사 업데이트
+    setTimeout(() => {
+        updateCalibrationNumber();
+    }, 100);
+    
+    renderHistoryList();
+    renderStatusList();
+    renderHomeYearSummary();
+};
+document.getElementById('reg-date').onchange = document.getElementById('reg-cycle').oninput = function(){
+    const date = document.getElementById('reg-date').value;
+    const cycle = parseInt(document.getElementById('reg-cycle').value);
+    if(date && cycle){
+        const d = new Date(date);
+        d.setFullYear(d.getFullYear() + cycle);
+        document.getElementById('reg-next-date').value = d.toISOString().slice(0,10);
+    }
+};
+
+// 측정 유형 변경 시 단위 옵션 업데이트
+document.addEventListener('DOMContentLoaded', function() {
+    const measurementTypeSelect = document.getElementById('reg-measurement-type');
+    if (measurementTypeSelect) {
+        measurementTypeSelect.addEventListener('change', updateUnitOptions);
+    }
+});
+// 검교정 구분 변경 시 필드 활성화/비활성화 함수 수정
+function toggleExternalFields() {
+    const calibType = document.getElementById('reg-calib-type').value;
+    const numInput = document.getElementById('reg-num');
+    const yearPrefix = document.getElementById('reg-year-prefix');
+    const allowErrorInput = document.getElementById('reg-allow-error');
+    const measurementTypeSelect = document.getElementById('reg-measurement-type');
+    const unitSelect = document.getElementById('reg-unit');
+    const calibEquipmentInput = document.getElementById('reg-calibration-equipment');
+    
+    if (calibType === '외부') {
+        numInput.disabled = true;
+        numInput.value = '';
+        yearPrefix.style.display = 'none';
+        allowErrorInput.disabled = true;
+        allowErrorInput.value = '';
+        measurementTypeSelect.disabled = true;
+        measurementTypeSelect.value = '';
+        unitSelect.disabled = true;
+        unitSelect.innerHTML = '<option value="">단위</option>';
+        document.getElementById('reg-custom-unit').style.display = 'none';
+        document.getElementById('reg-custom-unit').disabled = true;
+        calibEquipmentInput.disabled = true;
+        calibEquipmentInput.value = '';
+    } else {
+        numInput.disabled = false;
+        yearPrefix.style.display = 'inline';
+        allowErrorInput.disabled = false;
+        measurementTypeSelect.disabled = false;
+        unitSelect.disabled = false;
+        document.getElementById('reg-custom-unit').disabled = false;
+        calibEquipmentInput.disabled = false;
+        
+        // 자체 검교정으로 변경 시 교정번호 접두사 업데이트
+        updateCalibrationNumber();
+    }
+}
+
+// 측정 유형에 따른 단위 옵션 변경 함수
+function updateUnitOptions() {
+    const measurementType = document.getElementById('reg-measurement-type').value;
+    const unitSelect = document.getElementById('reg-unit');
+    
+    // 기존 옵션 제거
+    unitSelect.innerHTML = '<option value="">단위</option>';
+    
+    // 측정 유형에 따른 단위 옵션 추가
+    const unitOptions = {
+        '온도': ['°C', '°F', 'K'],
+        '유량': ['L/min', 'm³/h', 'kg/h', 'gpm'],
+        '레벨': ['mm', 'cm', 'm'],
+        '압력': ['Pa', 'kPa', 'MPa', 'bar', 'psi', 'kg/cm²', 'mmH₂O']
+    };
+    
+    if (measurementType && unitOptions[measurementType]) {
+        unitOptions[measurementType].forEach(unit => {
+            const option = document.createElement('option');
+            option.value = unit;
+            option.textContent = unit;
+            unitSelect.appendChild(option);
+        });
+        
+        // 공통 옵션 추가 (%와 직접입력)
+        const commonOptions = ['%', '직접입력'];
+        commonOptions.forEach(option => {
+            const optionElement = document.createElement('option');
+            optionElement.value = option;
+            optionElement.textContent = option;
+            unitSelect.appendChild(optionElement);
+        });
+    }
+}
+
+// 직접입력 토글 함수
+function toggleCustomUnit() {
+    const unitSelect = document.getElementById('reg-unit');
+    const customUnitInput = document.getElementById('reg-custom-unit');
+    
+    if (unitSelect.value === '직접입력') {
+        customUnitInput.style.display = 'inline-block';
+        customUnitInput.focus();
+    } else {
+        customUnitInput.style.display = 'none';
+        customUnitInput.value = '';
+    }
+}
+// 기존 외부 검교정 계측기의 교정번호 수정 함수
+function fixExternalCalibrationNumbers() {
+    console.log('[데이터 수정] 외부 검교정 계측기 교정번호 수정 시작');
+    let modified = false;
+    
+    Object.keys(instrumentsByYear).forEach(year => {
+        const instruments = instrumentsByYear[year];
+        instruments.forEach(inst => {
+            if (inst.calibType === '외부 검교정' && inst.num && inst.num !== '') {
+                console.log(`[데이터 수정] ${inst.name}의 교정번호를 "${inst.num}"에서 ""로 변경`);
+                inst.num = '';
+                modified = true;
+            }
+        });
+    });
+    
+    if (modified) {
+        localStorage.setItem('instrumentsByYear', JSON.stringify(instrumentsByYear));
+        console.log('[데이터 수정] localStorage에 수정된 데이터 저장 완료');
+    }
+}
+
+// 계측기 검교정 현황 리스트 렌더링 함수 수정
+function renderStatusList(){
+    // 기존 외부 검교정 계측기 교정번호 수정
+    fixExternalCalibrationNumbers();
+    
+    const year = document.getElementById('status-year').value;
+    
+    // 등록 연도 이후의 모든 계측기를 표시 (해당 연도에 등록된 계측기 + 이전 연도에 등록된 계측기)
+    let list = [];
+    const registeredYears = Object.keys(instrumentsByYear).sort();
+    registeredYears.forEach(y => {
+        if (parseInt(y.trim()) <= parseInt(year.trim())) {
+            list = list.concat(instrumentsByYear[y] || []);
+        }
+    });
+    
+    // 디버깅: 데이터 확인
+    console.log('Year:', year);
+    console.log('Total instruments:', list.length);
+    console.log('Instruments:', list);
+    
+    // 기존 데이터 호환성: calibType이 없으면 '자체'로 설정
+    list.forEach(inst => {
+        if (!inst.calibType) inst.calibType = '자체';
+        if (!inst.calibEquipment) inst.calibEquipment = '';
+    });
+    
+    // 자체/외부 분리
+    const internal = list.filter(i => i.calibType && i.calibType.includes('자체'));
+    const external = list.filter(i => i.calibType && i.calibType.includes('외부'));
+    
+    console.log('Internal:', internal.length);
+    console.log('External:', external.length);
+    
+    // 외부 검교정 계측기의 번호 확인
+    console.log('[외부 검교정 디버그] 외부 검교정 계측기 목록:');
+    external.forEach((inst, index) => {
+        console.log(`[${index + 1}] 계측기명: ${inst.name}, 교정번호: "${inst.num}", 검교정구분: ${inst.calibType}`);
+    });
+    
+    // 임시 입력값 저장용 초기화
+    if(!window._tempStatusEdits) window._tempStatusEdits = {};
+    
+    let html = '';
+    // 자체 검교정 테이블
+    html += `<h3>자체 검교정 계측기</h3>`;
+    if(internal.length === 0){
+        html += '<div style="color:#888;">등록된 자체 검교정 계측기가 없습니다.</div>';
+    } else {
+        html += `<table style='width:100%;border-collapse:collapse;margin-bottom:20px;font-size:12px;'>
+            <thead><tr style='background:#f0f4fa;'>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>계측기명</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>Service</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>유형</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>교정번호</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>교정일</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>교정주기</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>차기 교정 예정일</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>검교정 일자</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>허용오차</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>기준값</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>측정값</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>최대오차</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>검교정 결과</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>성적서 발급</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>사용 검교정기</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>저장</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>승인</th>
+            </tr></thead><tbody>`;
+        internal.forEach((inst,idx)=>{
+            const displayInst = getInstrumentDisplayInfo(inst, parseInt(year));
+            
+            // 실제 저장된 데이터 우선 사용
+            const yearData = inst.yearData && inst.yearData[year];
+            const temp = window._tempStatusEdits[year] && window._tempStatusEdits[year][inst.num];
+            
+            // 실제 데이터가 있으면 사용, 없으면 임시 데이터 사용
+            const calibDate = yearData ? yearData.calibDate : (temp ? temp.calibDate : '');
+            const maxError = yearData ? yearData.maxError : (temp ? temp.maxError : '');
+            const result = yearData ? yearData.result : (temp ? temp.result : '');
+            const approved = yearData ? yearData.approved : false;
+            
+            const displayNum = generateCalibrationNumber(inst.num, year);
+            html += `<tr>
+                <td style='padding:8px;border:1px solid #e0e0e0;'>${displayInst.name}</td>
+                <td style='padding:8px;border:1px solid #e0e0e0;'>${displayInst.service}</td>
+                <td style='padding:8px;border:1px solid #e0e0e0;'>${displayInst.type}</td>
+                <td style='padding:8px;border:1px solid #e0e0e0;'>${displayNum}</td>
+                <td style='padding:8px;border:1px solid #e0e0e0;'>${displayInst.date || '-'}</td>
+                <td style='padding:8px;border:1px solid #e0e0e0;'>${displayInst.cycle}년</td>
+                <td style='padding:8px;border:1px solid #e0e0e0;'>${displayInst.nextDate || '-'}</td>
+                <td style='padding:8px;border:1px solid #e0e0e0;'><input type='date' value='${calibDate}' onchange='saveTempStatusEdit("${inst.num}","calibDate",this.value)'></td>
+                <td style='padding:8px;border:1px solid #e0e0e0;'><span style="font-size:1.1em;">±</span> ${displayInst.allowError}${displayInst.unit ? ' ' + displayInst.unit : ''}</td>
+                <td style='padding:8px;border:1px solid #e0e0e0;'>
+                  <div style="display:flex;flex-direction:column;gap:2px;">
+                                         <div>
+                       <input type='number' style='width:60px;' value='${(yearData && yearData.std1) || (temp && temp.std1) || ''}' placeholder='기준1' onchange='saveTempStatusEdit("${inst.num}","std1",this.value)'> ${inst.unit || extractUnitFromAllowError(displayInst.allowError)}
+                     </div>
+                     <div>
+                       <input type='number' style='width:60px;' value='${(yearData && yearData.std2) || (temp && temp.std2) || ''}' placeholder='기준2' onchange='saveTempStatusEdit("${inst.num}","std2",this.value)'> ${inst.unit || extractUnitFromAllowError(displayInst.allowError)}
+                     </div>
+                     <div>
+                       <input type='number' style='width:60px;' value='${(yearData && yearData.std3) || (temp && temp.std3) || ''}' placeholder='기준3' onchange='saveTempStatusEdit("${inst.num}","std3",this.value)'> ${inst.unit || extractUnitFromAllowError(displayInst.allowError)}
+                     </div>
+                  </div>
+                </td>
+                <td style='padding:8px;border:1px solid #e0e0e0;'>
+                  <div style="display:flex;flex-direction:column;gap:2px;">
+                                           <div>
+                         <input type='number' style='width:60px;' value='${(yearData && yearData.meas1) || (temp && temp.meas1) || ''}' placeholder='측정1' onchange='saveTempStatusEdit("${inst.num}","meas1",this.value)'> ${inst.unit || extractUnitFromAllowError(displayInst.allowError)}
+                       </div>
+                       <div>
+                         <input type='number' style='width:60px;' value='${(yearData && yearData.meas2) || (temp && temp.meas2) || ''}' placeholder='측정2' onchange='saveTempStatusEdit("${inst.num}","meas2",this.value)'> ${inst.unit || extractUnitFromAllowError(displayInst.allowError)}
+                       </div>
+                       <div>
+                         <input type='number' style='width:60px;' value='${(yearData && yearData.meas3) || (temp && temp.meas3) || ''}' placeholder='측정3' onchange='saveTempStatusEdit("${inst.num}","meas3",this.value)'> ${inst.unit || extractUnitFromAllowError(displayInst.allowError)}
+                       </div>
+                  </div>
+                </td>
+                <td style='padding:8px;border:1px solid #e0e0e0;'><input type='text' style='width:80px;' value='${maxError}' onchange='saveTempStatusEdit("${inst.num}","maxError",this.value)'></td>
+                <td style='padding:8px;border:1px solid #e0e0e0;'><select onchange='saveTempStatusEdit("${inst.num}","result",this.value)'><option value=''>선택</option><option value='합격' ${result==='합격'?'selected':''}>합격</option><option value='불합격' ${result==='불합격'?'selected':''}>불합격</option></select></td>
+                <td style='padding:8px;border:1px solid #e0e0e0;'>
+            <span class='pdf-link' onclick='(function(num){
+                const year = document.getElementById("status-year").value;
+                let allInstruments = [];
+                Object.values(instrumentsByYear).forEach(yearArr => { allInstruments = allInstruments.concat(yearArr); });
+                const inst = allInstruments.find(inst => inst.num === num);
+                if(inst && inst.yearData && inst.yearData[year] && inst.yearData[year].approved){
+                    generatePdfKoreanWithSeal(num);
+                } else {
+                    generatePdfKorean(num);
+                }
+})("${inst.num}")'>성적서 발급</span></td>
+                <td style='padding:8px;border:1px solid #e0e0e0;'>${displayInst.calibEquipment || '-'}</td>
+                <td style='padding:8px;border:1px solid #e0e0e0;'><button class='btn' style='padding:6px 16px;font-size:0.95em;' onclick='saveStatusRow("${inst.num}")'>저장</button></td>
+                <td style='padding:8px;border:1px solid #e0e0e0;'><button class='btn approve-btn' id='approve-btn-${inst.num}' style='padding:6px 16px;font-size:0.95em;background:#e74c3c;' onclick='approveStatusRow("${inst.num}")' ${approved ? 'disabled' : ''}>${approved ? '승인완료' : '승인'}</button></td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+    }
+    // 외부 검교정 테이블
+    html += `<h3 style="margin-top:30px;">외부 검교정 계측기</h3>`;
+    if(external.length === 0){
+        html += '<div style="color:#888;">등록된 외부 검교정 계측기가 없습니다.</div>';
+    } else {
+        html += `<table style='width:100%;border-collapse:collapse;margin-bottom:20px;font-size:12px;'>
+            <thead><tr style='background:#f0f4fa;'>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>계측기명</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>Service</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>유형</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>교정일</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>교정주기</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>차기 교정 예정일</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>검교정 일자</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>성적서 첨부</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>검교정 결과</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>저장</th>
+            </tr></thead><tbody>`;
+        external.forEach((inst,idx)=>{
+            const displayInst = getInstrumentDisplayInfo(inst, parseInt(year));
+            
+            // 현재 연도의 파일 정보만 확인
+            const currentYearFile = inst.yearFiles && inst.yearFiles[year];
+            console.log('currentYearFile for', inst.num, ':', currentYearFile);
+            // 실제 저장된 데이터 우선 사용
+            const yearData = inst.yearData && inst.yearData[year];
+            const temp = window._tempStatusEdits[year] && window._tempStatusEdits[year][inst.num];
+            
+            // 실제 데이터가 있으면 사용, 없으면 임시 데이터 사용
+            const calibDate = yearData ? yearData.calibDate : (temp ? temp.calibDate : '');
+            const result = yearData ? yearData.result : (temp ? temp.result : '');
+            
+            html += `<tr>
+                <td style='padding:8px;border:1px solid #e0e0e0;'>${displayInst.name}</td>
+                <td style='padding:8px;border:1px solid #e0e0e0;'>${displayInst.service}</td>
+                <td style='padding:8px;border:1px solid #e0e0e0;'>${displayInst.type}</td>
+                <td style='padding:8px;border:1px solid #e0e0e0;'>${displayInst.date || '-'}</td>
+                <td style='padding:8px;border:1px solid #e0e0e0;'>${displayInst.cycle}년</td>
+                <td style='padding:8px;border:1px solid #e0e0e0;'>${displayInst.nextDate || '-'}</td>
+                <td style='padding:8px;border:1px solid #e0e0e0;'><input type='date' value='${calibDate}' onchange='saveTempStatusEdit("${inst.num}","calibDate",this.value)'></td>
+                <td style='padding:8px;border:1px solid #e0e0e0;'>
+                  ${currentYearFile ? 
+                    `<div style="display:flex;flex-direction:column;gap:5px;">
+                      <span style="color:green;font-size:0.9em;">✓ ${currentYearFile.fileName} 첨부됨</span>
+                      <input type="file" id="file-${inst.num}-${year}" onchange="saveExternalFile('${inst.num}', this.files[0], this)" style="display:none;" />
+                      <button type="button" onclick="document.getElementById('file-${inst.num}-${year}').click()" style="background:#4CAF50;color:white;border:none;padding:4px 8px;border-radius:3px;font-size:0.8em;cursor:pointer;">파일 변경</button>
+                      ${currentYearFile.fileUrl && !currentYearFile.fileUrl.includes('vercel.app') ? `<a href="${currentYearFile.fileUrl}" download="${currentYearFile.fileName||'성적서.pdf'}" style="color:blue;font-size:0.9em;">다운로드</a>` : ''}
+                    </div>` : 
+                    `<input type="file" id="file-${inst.num}-${year}" onchange="saveExternalFile('${inst.num}', this.files[0], this)" />`
+                  }
+                </td>
+                <td style='padding:8px;border:1px solid #e0e0e0;'><select onchange='saveTempStatusEdit("${inst.num}","result",this.value)'><option value=''>선택</option><option value='합격' ${result==='합격'?'selected':''}>합격</option><option value='불합격' ${result==='불합격'?'selected':''}>불합격</option></select></td>
+                <td style='padding:8px;border:1px solid #e0e0e0;'><button class='btn' onclick='saveStatusRow("${inst.num}")'>저장</button></td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+    }
+    document.getElementById('status-instrument-list').innerHTML = html;
+}
+// 임시 입력값 저장
+function saveTempStatusEdit(num, key, value) {
+    const year = document.getElementById('status-year').value;
+    if(!window._tempStatusEdits) window._tempStatusEdits = {};
+    if(!window._tempStatusEdits[year]) window._tempStatusEdits[year] = {};
+    if(!window._tempStatusEdits[year][num]) window._tempStatusEdits[year][num] = {calibDate:'',maxError:'',result:'',std1:'',meas1:'',std2:'',meas2:'',std3:'',meas3:''};
+    window._tempStatusEdits[year][num][key] = value;
+}
+// 저장 버튼 클릭 시 실제 데이터에 반영
+function saveStatusRow(num) {
+    const year = document.getElementById('status-year').value;
+    const list = instrumentsByYear[year]||[];
+    const idx = list.findIndex(inst=>inst.num===num);
+    if(idx===-1) return;
+    
+    const temp = window._tempStatusEdits[year] && window._tempStatusEdits[year][num];
+    if(temp) {
+        // 연도별 데이터 초기화
+        if(!list[idx].yearData) list[idx].yearData = {};
+        
+        // 현재 연도에 데이터 저장
+        list[idx].yearData[year] = {
+            calibDate: temp.calibDate,
+            maxError: temp.maxError,
+            result: temp.result,
+            std1: temp.std1 || '',
+            meas1: temp.meas1 || '',
+            std2: temp.std2 || '',
+            meas2: temp.meas2 || '',
+            std3: temp.std3 || '',
+            meas3: temp.meas3 || '',
+            approved: (list[idx].yearData[year] && list[idx].yearData[year].approved) || false
+        };
+        
+        // 검교정 일자가 입력된 경우 계측기 List의 교정일과 차기 교정 예정일 업데이트
+        if(temp.calibDate && temp.calibDate.trim() !== '') {
+            // 교정일 업데이트
+            list[idx].calibDate = temp.calibDate;
+            
+            // 차기 교정 예정일 계산 (검교정 일자 + 교정주기)
+            const calibDate = new Date(temp.calibDate);
+            const nextCalibDate = new Date(calibDate);
+            nextCalibDate.setFullYear(nextCalibDate.getFullYear() + list[idx].cycle);
+            list[idx].nextDate = nextCalibDate.toISOString().slice(0, 10);
+        }
+        
+        // 임시 데이터 삭제
+        delete window._tempStatusEdits[year][num];
+        
+        // localStorage에 저장
+        localStorage.setItem('instrumentsByYear', JSON.stringify(instrumentsByYear));
+    }
+    alert('저장되었습니다!');
+    renderStatusList();
+    renderHomeYearSummary();
+    renderStatusChart();
+    renderInstrumentList(); // 계측기 List도 업데이트
+}
+function updateAllowError(idx, val){
+    const year = document.getElementById('status-year').value;
+    instrumentsByYear[year][idx].allowError = val;
+    renderHomeYearSummary();
+}
+function updateMaxError(idx, val){
+    const year = document.getElementById('status-year').value;
+    instrumentsByYear[year][idx].maxError = val;
+    renderHomeYearSummary();
+}
+function updateResult(idx, val){
+    const year = document.getElementById('status-year').value;
+    instrumentsByYear[year][idx].result = val;
+    renderHomeYearSummary();
+}
+function updateCalibDate(idx, val){
+    const year = document.getElementById('status-year').value;
+    instrumentsByYear[year][idx].calibDate = val;
+    renderHomeYearSummary();
+    renderStatusChart();
+}
+// isCompleted 함수 수정 - 외부 검교정도 포함
+function isCompleted(inst, year){
+    if (inst.calibType === "외부") {
+        const yearData = inst.yearData && inst.yearData[year];
+        return yearData && yearData.calibDate && yearData.result;
+    } else {
+        const yearData = inst.yearData && inst.yearData[year];
+        return yearData && yearData.calibDate && yearData.maxError && yearData.result;
+    }
+}
+function autoCollectStatusData(){
+    const year = document.getElementById('status-year').value;
+    const list = instrumentsByYear[year]||[];
+    const statusData = getCurrentStatusData();
+    statusData.forEach(row=>{row.plan=0;row.actual=0;});
+    list.forEach(inst=>{
+        if(inst.nextDate){
+            const m = (new Date(inst.nextDate)).getMonth();
+            if(m>=0 && m<12) statusData[m].plan++;
+        }
+        if(isCompleted(inst, year) && inst.yearData && inst.yearData[year] && inst.yearData[year].calibDate){
+            const m = (new Date(inst.yearData[year].calibDate)).getMonth();
+            if(m>=0 && m<12) statusData[m].actual++;
+        }
+    });
+    // 수집된 데이터를 해당 연도에 저장
+    statusDataByYear[year] = statusData;
+    renderStatusInputs();
+    renderStatusChart();
+    renderHomeChart();
+}
+function renderStatusInputs() {
+    const wrap = document.getElementById('status-inputs');
+    wrap.innerHTML = '';
+    const statusData = getCurrentStatusData();
+    statusData.forEach((row, idx) => {
+        wrap.innerHTML += `
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                <div style="width:60px;">${row.month}</div>
+                <input type="number" min="0" value="${row.plan}" style="width:80px;" onchange="updateStatusData(${idx}, 'plan', this.valueAsNumber);">
+                <span style="color:#888;">계획</span>
+                <input type="number" min="0" value="${row.actual}" style="width:80px;" onchange="updateStatusData(${idx}, 'actual', this.valueAsNumber);">
+                <span style="color:#888;">실적</span>
+            </div>
+        `;
+    });
+}
+// 상태 데이터 업데이트 함수
+function updateStatusData(idx, field, value) {
+    const year = document.getElementById('status-year').value;
+    if (!statusDataByYear[year]) {
+        statusDataByYear[year] = getCurrentStatusData();
+    }
+    statusDataByYear[year][idx][field] = value;
+    renderStatusChart();
+    renderHomeChart();
+}
+
+function renderStatusChart() {
+    const chart = document.getElementById('status-bar-chart');
+    chart.innerHTML = '';
+    const statusData = getCurrentStatusData();
+    statusData.forEach(row => {
+        const achieve = row.plan ? Math.round(row.actual/row.plan*100) : 0;
+        chart.innerHTML += `
+            <div class="bar-row">
+                <div class="bar-label">${row.month}</div>
+                <div class="bar-group">
+                    <div class="bar plan" style="width:${row.plan*10}px;" title="계획">${row.plan}</div>
+                </div>
+                <div class="bar-group">
+                    <div class="bar actual" style="width:${row.actual*10}px;" title="실적">${row.actual}</div>
+                    <span class="bar-achieve">${achieve}%</span>
+                </div>
+            </div>
+        `;
+    });
+}
+document.getElementById('status-form').onsubmit = function(e){
+    e.preventDefault();
+    const year = document.getElementById('status-year').value;
+    // 현재 연도의 데이터가 이미 statusDataByYear에 저장되어 있음
+    alert(`${year}년 월별 계획/실적 데이터가 저장되었습니다!`);
+};
+// 이력관리
+let selectedHistoryIdx = null;
+
+function renderHistoryList(){
+    console.log('renderHistoryList 실행!');
+    const listElem = document.getElementById('history-instrument-list');
+    listElem.innerHTML = '';
+    // document.getElementById('history-detail').innerHTML = ''; // 상세 영역 비우는 코드 주석 처리
+    // document.getElementById('history-detail').style.display = 'none'; // 상세 영역 숨기는 코드 주석 처리
+
+    // 모든 연도의 계측기를 합침
+    let allInstruments = [];
+    Object.values(instrumentsByYear).forEach(yearArr => {
+        allInstruments = allInstruments.concat(yearArr);
+    });
+
+    // 삭제된 계측기(이상한 데이터, deleted:true 포함) 제외
+    // 외부 검교정 계측기는 num이 빈 문자열이므로 num 조건 제외
+    allInstruments = allInstruments.filter(inst => inst && inst.name && !inst.deleted);
+
+    // history 필드가 없으면 빈 배열로 초기화
+    allInstruments.forEach(inst => {
+        if (!inst.history) inst.history = [];
+    });
+
+    // 전역 변수로 저장
+    window._allInstrumentsForHistory = allInstruments;
+
+    if(allInstruments.length === 0){
+        listElem.innerHTML = '<div style="color:#888;">등록된 계측기가 없습니다.</div>';
+        return;
+    }
+    allInstruments.forEach((inst, idx) => {
+        listElem.innerHTML += `<div class="instrument-item" onclick="selectHistoryInstrument(${idx})">${inst.name} (${inst.service})</div>`;
+        if (selectedHistoryIdx === idx) {
+            listElem.innerHTML += `<div id="history-detail" style="margin:10px 0;">${getHistoryDetailHtml(inst, idx)}</div>`;
+        }
+    });
+}
+
+function selectHistoryInstrument(idx){
+    selectedHistoryIdx = idx;
+    renderHistoryList();
+}
+
+function getHistoryDetailHtml(inst, idx){
+    let html = `<div style='font-size:1.2em;font-weight:600;color:#2980b9;'>${inst.name} (${inst.service}) 이력</div>`;
+    html += `<div style='margin-top:10px;'><button class='btn' onclick='addHistoryEntry(${idx})'>+ 연도별 이력 추가</button></div>`;
+    if(inst.history.length===0){
+        html += `<div style='color:#888;margin-top:10px;'>이력이 없습니다.</div>`;
+    } else {
+        const years = {};
+        inst.history.forEach(h=>{if(!years[h.year])years[h.year]=[];years[h.year].push(h);});
+        Object.keys(years).sort().forEach(y=>{
+            html += `<div class='history-year'>${y}년</div>`;
+            years[y].forEach(h=>{
+                html += `<div class='history-entry'>- ${h.desc}</div>`;
+            });
+        });
+    }
+    return html;
+}
+// 최초 진입시 홈화면 v
+initializeYearOptions(); // 연도 옵션 초기화
+showPage('home');
+
+function generatePdf(num){
+    console.log('generatePdf 함수 호출됨, num:', num);
+    console.log('window.jspdf:', window.jspdf);
+    console.log('window.jspdf.jsPDF:', window.jspdf?.jsPDF);
+    
+    const year = document.getElementById('status-year').value;
+    console.log('선택된 연도:', year);
+    
+    // 모든 연도의 계측기를 합쳐서 해당 계측기 찾기
+    let allInstruments = [];
+    Object.values(instrumentsByYear).forEach(yearArr => {
+        allInstruments = allInstruments.concat(yearArr);
+    });
+    
+    console.log('전체 계측기 목록:', allInstruments);
+    const inst = allInstruments.find(inst => inst.num === num);
+    console.log('찾은 계측기:', inst);
+    
+    if (!inst) {
+        alert('계측기를 찾을 수 없습니다. 번호: ' + num);
+        return;
+    }
+    
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+        console.error('PDF 라이브러리 로드 실패');
+        alert('PDF 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인하세요.');
+        return;
+    }
+    
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        // 한글 폰트 설정 - 기본 폰트 사용하되 한글 지원
+        doc.setFont('helvetica', 'normal');
+        
+        // 결재란
+        doc.setFontSize(12);
+        doc.text('Manager:', 150, 15);
+        doc.text('Checker:', 150, 25);
+        doc.rect(170, 8, 30, 10); // 담당자 서명란
+        doc.rect(170, 18, 30, 10); // 확인자 서명란
+        // 타이틀
+        doc.setFontSize(18);
+        doc.text('Instrument Calibration Certificate', 105, 40, {align:'center'});
+        doc.setFontSize(13);
+        // 정보
+        let y = 60;
+        doc.text(`Instrument Name: ${inst.name}`, 20, y);
+        y += 12;
+        doc.text(`Service: ${inst.service}`, 20, y);
+        y += 12;
+        doc.text(`Type: ${inst.type}`, 20, y);
+        y += 12;
+        doc.text(`Calibration No: ${inst.num}`, 20, y);
+        y += 12;
+        doc.text(`Calibration Date: ${inst.date}`, 20, y);
+        y += 12;
+        doc.text(`Cycle: ${inst.cycle} years`, 20, y);
+        y += 12;
+        doc.text(`Next Calibration: ${inst.nextDate}`, 20, y);
+        y += 12;
+        doc.text(`Allowable Error: ±${inst.allowError}${inst.unit ? ' ' + inst.unit : ''}`, 20, y);
+        y += 12;
+        
+        // 현재 연도의 검교정 데이터 가져오기
+        const yearData = inst.yearData && inst.yearData[year];
+        const calibDate = yearData ? yearData.calibDate : '';
+        const maxError = yearData ? yearData.maxError : '';
+        const result = yearData ? yearData.result : '';
+        
+        doc.text(`Calibration Date: ${calibDate || '-'}`, 20, y);
+        y += 12;
+        doc.text(`Max Error: ${maxError || '-'}`, 20, y);
+        y += 12;
+        doc.text(`Result: ${result || '-'}`, 20, y);
+        // 하단
+        doc.setFontSize(10);
+        doc.text('This certificate proves the calibration result of the instrument.', 20, 270);
+        doc.save(`${inst.name}_Certificate.pdf`);
+        console.log('PDF 생성 완료');
+    } catch (error) {
+        console.error('PDF 생성 중 오류:', error);
+        alert('PDF 생성 중 오류가 발생했습니다: ' + error.message);
+    }
+}
+// 외부 검교정 파일 저장 함수 추가
+function saveExternalFile(num, file, input) {
+    console.log('saveExternalFile called:', num, file);
+    const year = document.getElementById('status-year').value;
+    const list = instrumentsByYear[year]||[];
+    console.log('Year:', year, 'List length:', list.length);
+    console.log('Looking for num:', num, 'Type:', typeof num);
+    
+    let idx = -1;
+    
+    // 외부 검교정 계측기의 경우 (num이 빈 문자열이거나 숫자가 아닌 경우)
+    if (!num || num === '' || isNaN(parseInt(num))) {
+        // 파일 input의 id에서 계측기명 추출
+        const fileId = input.id;
+        console.log('File input id:', fileId);
+        
+        // file-{num}-{year} 형식에서 num 부분이 빈 문자열인 경우
+        // 계측기명으로 찾기 위해 다른 방법 사용
+        const externalInstruments = list.filter(inst => inst.calibType === '외부 검교정');
+        console.log('External instruments:', externalInstruments);
+        
+        if (externalInstruments.length === 1) {
+            // 외부 검교정 계측기가 하나뿐인 경우
+            idx = list.findIndex(inst => inst.calibType === '외부 검교정');
+        } else {
+            // 여러 개인 경우 사용자에게 선택하도록 할 수 있지만, 
+            // 현재는 첫 번째 외부 검교정 계측기를 사용
+            idx = list.findIndex(inst => inst.calibType === '외부 검교정');
+        }
+    } else {
+        // 기존 방식 (자체 검교정 계측기)
+        const numToFind = parseInt(num);
+        idx = list.findIndex(inst => parseInt(inst.num) === numToFind);
+    }
+    
+    console.log('Found index:', idx);
+    console.log('Available instruments:', list.map(inst => ({num: inst.num, name: inst.name, calibType: inst.calibType})));
+    
+    if(idx !== -1 && file) {
+        // 연도별 파일 정보 초기화
+        if(!list[idx].yearFiles) list[idx].yearFiles = {};
+        
+        // 기존 URL 해제
+        if(list[idx].yearFiles[year] && list[idx].yearFiles[year].fileUrl) {
+            URL.revokeObjectURL(list[idx].yearFiles[year].fileUrl);
+        }
+        
+        // 현재 연도에 파일 정보 저장
+        list[idx].yearFiles[year] = {
+            file: file,
+            fileName: file.name,
+            fileUrl: URL.createObjectURL(file)
+        };
+        console.log('Saved yearFiles:', list[idx].yearFiles);
+        console.log('Saved yearFiles[year]:', list[idx].yearFiles[year]);
+        localStorage.setItem('instrumentsByYear', JSON.stringify(instrumentsByYear));
+        console.log('File saved successfully for year', year, ':', list[idx].yearFiles[year].fileName);
+    } else {
+        console.log('Failed to save file - idx:', idx, 'file:', file);
+    }
+    
+    // 렌더링으로 UI 업데이트
+    renderStatusList();
+    renderHomeYearSummary();
+    renderInstrumentList();
+}
+// 수정 모드 토글 함수 추가
+let isEditMode = false;
+
+function toggleEditMode() {
+    const checkboxes = document.querySelectorAll('.instrument-checkbox:checked');
+    if (checkboxes.length === 0) {
+        alert('수정할 계측기를 선택해주세요.');
+        return;
+    }
+    
+    isEditMode = !isEditMode;
+    const editBtn = document.getElementById('edit-mode-btn');
+    const saveBtn = document.getElementById('save-btn');
+    
+    if (isEditMode) {
+        editBtn.textContent = '취소';
+        editBtn.style.background = 'linear-gradient(90deg, #e74c3c, #c0392b)';
+        saveBtn.style.display = 'inline-block';
+    } else {
+        editBtn.textContent = '수정';
+        editBtn.style.background = 'linear-gradient(90deg, #3498db, #2980b9)';
+        saveBtn.style.display = 'none';
+    }
+    
+    renderInstrumentList();
+}
+
+// 계측기 List 렌더링 함수 수정 - 수정 모드에 따라 표시 방식 변경
+function renderInstrumentList() {
+    console.log('=== renderInstrumentList 시작 ===');
+    console.log('현재 instrumentsByYear:', instrumentsByYear);
+    
+    // localStorage에서 데이터를 다시 로드하는 부분 제거
+    // (메모리의 최신 데이터가 덮어씌워지는 것을 방지)
+    
+    // 연도 목록 생성
+    const years = generateYearOptions();
+    const yearSelect = document.getElementById('list-year');
+    const currentYear = yearSelect.value || new Date().getFullYear();
+    // 연도 옵션이 비어있을 때만 초기화
+    if (yearSelect.children.length === 0) {
+        yearSelect.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+        yearSelect.value = currentYear;
+    }
+    const year = yearSelect.value || currentYear;
+    console.log('선택된 연도:', year);
+    // 등록 연도 이후의 모든 계측기를 표시 (해당 연도에 등록된 계측기 + 이전 연도에 등록된 계측기)
+    let list = [];
+    const registeredYears = Object.keys(instrumentsByYear).sort();
+    registeredYears.forEach(y => {
+        if (parseInt(y.trim()) <= parseInt(year.trim())) {
+            const yearData = instrumentsByYear[y] || [];
+            list = list.concat(yearData);
+        }
+    });
+    console.log('전체 리스트:', list);
+    list.sort((a, b) => (a.num || '').localeCompare(b.num || ''));
+    // 자체/외부 분리
+    const internal = list.filter(i => i.calibType && i.calibType.includes('자체'));
+    const external = list.filter(i => i.calibType && i.calibType.includes('외부'));
+    let html = '';
+    html += `<h3>자체 검교정 계측기</h3>`;
+    if(internal.length === 0){
+        html += '<div style="color:#888;">등록된 자체 검교정 계측기가 없습니다.</div>';
+    } else {
+        html += `<table class="instrument-list-table" style='width:100%;border-collapse:collapse;margin-bottom:20px;font-size:12px;'>
+            <thead><tr style='background:#f0f4fa;'>
+                <th style='padding:8px;border:1px solid #e0e0e0;'><input type="checkbox" id="select-all-internal" onchange="toggleSelectAll('internal', this.checked)"></th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>계측기명</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>Service</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>유형</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>교정번호</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>교정일</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>교정주기</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>차기 교정 예정일</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>허용오차</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>검교정 구분</th>
+            </tr></thead><tbody>`;
+        internal.forEach((inst,idx)=>{
+            const displayInst = getInstrumentDisplayInfo(inst, parseInt(year));
+            const displayNum = generateCalibrationNumber(inst.num, year);
+            
+            // yearData와 temp 변수 정의
+            const yearData = inst.yearData && inst.yearData[year];
+            const temp = window._tempStatusEdits && window._tempStatusEdits[year] && window._tempStatusEdits[year][inst.num];
+            const maxError = (yearData && yearData.maxError) || (temp && temp.maxError) || '';
+            const result = (yearData && yearData.result) || (temp && temp.result) || '';
+            
+            let checked = false;
+            if (isEditMode) {
+                // 체크박스가 체크되어 있으면 활성화
+                const checkbox = document.querySelector(`.instrument-checkbox[data-type="internal"][data-index="${idx}"]`);
+                checked = checkbox && checkbox.checked;
+            }
+            if (isEditMode) {
+                html += `<tr>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'><input type="checkbox" class="instrument-checkbox" data-type="internal" data-index="${idx}" data-instrument-id="${inst.id}" onchange="updateButtonStates()"></td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'><input type='text' value='${displayInst.name}' onchange='updateInstrumentField(${idx},"name",this.value)' ${!checked ? "disabled" : ""}></td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'><input type='text' value='${displayInst.service}' onchange='updateInstrumentField(${idx},"service",this.value)' ${!checked ? "disabled" : ""}></td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'><input type='text' value='${displayInst.type}' onchange='updateInstrumentField(${idx},"type",this.value)' ${!checked ? "disabled" : ""}></td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'><input type='text' value='${displayNum}' onchange='updateInstrumentField(${idx},"num",this.value)' ${!checked ? "disabled" : ""}></td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'><input type='date' value='${displayInst.date}' onchange='updateInstrumentField(${idx},"date",this.value)' ${!checked ? "disabled" : ""}></td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'><input type='number' value='${displayInst.cycle}' onchange='updateInstrumentField(${idx},"cycle",this.value)' ${!checked ? "disabled" : ""}></td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'><input type='date' value='${displayInst.nextDate}' onchange='updateInstrumentField(${idx},"nextDate",this.value)' ${!checked ? "disabled" : ""}></td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'><input type='text' value='${displayInst.allowError}' onchange='updateInstrumentField(${idx},"allowError",this.value)' ${!checked ? "disabled" : ""}></td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'>
+                        <select onchange='updateInstrumentField(${idx},"calibType",this.value)' ${!checked ? "disabled" : ""}>
+                            <option value='자체 검교정' ${displayInst.calibType==='자체 검교정'?'selected':''}>자체 검교정</option>
+                            <option value='외부 검교정' ${displayInst.calibType==='외부 검교정'?'selected':''}>외부 검교정</option>
+                        </select>
+                    </td>
+                </tr>`;
+            } else {
+                html += `<tr>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'><input type="checkbox" class="instrument-checkbox" data-type="internal" data-index="${idx}" data-instrument-id="${inst.id}" onchange="updateButtonStates()"></td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'>${displayInst.name}</td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'>${displayInst.service}</td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'>${displayInst.type}</td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'>${displayNum}</td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'>${displayInst.date || '-'}</td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'>${displayInst.cycle}년</td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'>${displayInst.nextDate || '-'}</td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'>±${displayInst.allowError}${displayInst.unit ? ' ' + displayInst.unit : ''}</td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'>${displayInst.calibType}</td>
+                </tr>`;
+            }
+        });
+        html += '</tbody></table>';
+    }
+    html += `<h3 style="margin-top:30px;">외부 검교정 계측기</h3>`;
+    if(external.length === 0){
+        html += '<div style="color:#888;">등록된 외부 검교정 계측기가 없습니다.</div>';
+    } else {
+        html += `<table class="instrument-list-table" style='width:100%;border-collapse:collapse;margin-bottom:20px;font-size:12px;'>
+            <thead><tr style='background:#f0f4fa;'>
+                <th style='padding:8px;border:1px solid #e0e0e0;'><input type="checkbox" id="select-all-external" onchange="toggleSelectAll('external', this.checked)"></th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>계측기명</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>Service</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>유형</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>교정일</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>교정주기</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>차기 교정 예정일</th>
+                <th style='padding:8px;border:1px solid #e0e0e0;'>검교정 구분</th>
+            </tr></thead><tbody>`;
+        external.forEach((inst,idx)=>{
+            const displayInst = getInstrumentDisplayInfo(inst, parseInt(year));
+            const externalIdx = internal.length + idx;
+            let checked = false;
+            if (isEditMode) {
+                const checkbox = document.querySelector(`.instrument-checkbox[data-type="external"][data-index="${externalIdx}"]`);
+                checked = checkbox && checkbox.checked;
+            }
+            if (isEditMode) {
+                html += `<tr>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'><input type="checkbox" class="instrument-checkbox" data-type="external" data-index="${externalIdx}" data-instrument-id="${inst.id}" onchange="updateButtonStates()"></td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'><input type='text' value='${displayInst.name}' onchange='updateInstrumentField(${externalIdx},"name",this.value)' ${!checked ? "disabled" : ""}></td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'><input type='text' value='${displayInst.service}' onchange='updateInstrumentField(${externalIdx},"service",this.value)' ${!checked ? "disabled" : ""}></td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'><input type='text' value='${displayInst.type}' onchange='updateInstrumentField(${externalIdx},"type",this.value)' ${!checked ? "disabled" : ""}></td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'><input type='date' value='${displayInst.date}' onchange='updateInstrumentField(${externalIdx},"date",this.value)' ${!checked ? "disabled" : ""}></td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'><input type='number' value='${displayInst.cycle}' onchange='updateInstrumentField(${externalIdx},"cycle",this.value)' ${!checked ? "disabled" : ""}></td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'><input type='date' value='${displayInst.nextDate}' onchange='updateInstrumentField(${externalIdx},"nextDate",this.value)' ${!checked ? "disabled" : ""}></td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'>
+                        <select onchange='updateInstrumentField(${externalIdx},"calibType",this.value)' ${!checked ? "disabled" : ""}>
+                            <option value='자체 검교정' ${displayInst.calibType==='자체 검교정'?'selected':''}>자체 검교정</option>
+                            <option value='외부 검교정' ${displayInst.calibType==='외부 검교정'?'selected':''}>외부 검교정</option>
+                        </select>
+                    </td>
+                </tr>`;
+            } else {
+                html += `<tr>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'><input type="checkbox" class="instrument-checkbox" data-type="external" data-index="${externalIdx}" data-instrument-id="${inst.id}" onchange="updateButtonStates()"></td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'>${displayInst.name}</td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'>${displayInst.service}</td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'>${displayInst.type}</td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'>${displayInst.date || '-'}</td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'>${displayInst.cycle}년</td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'>${displayInst.nextDate || '-'}</td>
+                    <td style='padding:8px;border:1px solid #e0e0e0;'>${displayInst.calibType}</td>
+                </tr>`;
+            }
+        });
+        html += '</tbody></table>';
+    }
+    document.getElementById('instrument-list-table').innerHTML = html;
+}
+// 계측기 필드 업데이트 함수 추가
+function updateInstrumentField(idx, field, value) {
+    const year = document.getElementById('list-year').value;
+    const list = instrumentsByYear[year] || [];
+    if (list[idx]) {
+        list[idx][field] = value;
+        // 차기 교정 예정일 자동 계산
+        if (field === 'date' || field === 'cycle') {
+            const date = list[idx].date;
+            const cycle = parseInt(list[idx].cycle);
+            if (date && cycle) {
+                const d = new Date(date);
+                d.setFullYear(d.getFullYear() + cycle);
+                list[idx].nextDate = d.toISOString().slice(0, 10);
+            }
+        }
+    }
+}
+// 계측기 List 변경사항 저장 함수 추가
+function saveInstrumentListChanges() {
+    alert('계측기 정보가 저장되었습니다!');
+    
+    // 수정 모드 해제
+    isEditMode = false;
+    const editBtn = document.getElementById('edit-mode-btn');
+    const saveBtn = document.getElementById('save-btn');
+    
+    editBtn.textContent = '수정';
+    editBtn.style.background = 'linear-gradient(90deg, #3498db, #2980b9)';
+    saveBtn.style.display = 'none';
+    
+    // 다른 페이지들도 업데이트
+    renderInstrumentList();
+    renderStatusList();
+    renderHomeYearSummary();
+    renderHistoryList();
+}
+
+// 버튼 상태 업데이트 함수
+function updateButtonStates() {
+    const checkboxes = document.querySelectorAll('.instrument-checkbox:checked');
+    const editBtn = document.getElementById('edit-mode-btn');
+    const deleteBtn = document.getElementById('delete-btn');
+    if (checkboxes.length > 0) {
+        editBtn.disabled = false;
+        deleteBtn.disabled = false;
+    } else {
+        editBtn.disabled = true;
+        deleteBtn.disabled = true;
+    }
+    // 체크박스 상태가 바뀔 때마다 리스트를 다시 렌더링
+    if (isEditMode) {
+        renderInstrumentList();
+    }
+}
+
+
+
+// 전체 선택/해제 함수
+function toggleSelectAll(type, checked) {
+    const checkboxes = document.querySelectorAll(`.instrument-checkbox[data-type="${type}"]`);
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = checked;
+    });
+    updateButtonStates();
+}
+
+// 선택된 계측기 삭제 함수
+function deleteSelectedInstruments() {
+    const checkboxes = document.querySelectorAll('.instrument-checkbox:checked');
+    if (checkboxes.length === 0) {
+        alert('삭제할 계측기를 선택해주세요.');
+        return;
+    }
+    
+    const year = document.getElementById('list-year').value;
+    const confirmMessage = `선택된 ${checkboxes.length}개의 계측기를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`;
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+    
+    let deletedCount = 0;
+    
+    checkboxes.forEach(checkbox => {
+        const instrumentId = checkbox.getAttribute('data-instrument-id');
+        
+        // 모든 연도에서 해당 계측기 찾아서 삭제
+        Object.keys(instrumentsByYear).forEach(y => {
+            const list = instrumentsByYear[y] || [];
+            const index = list.findIndex(inst => inst.id === instrumentId);
+            if (index !== -1) {
+                list.splice(index, 1);
+                deletedCount++;
+            }
+        });
+    });
+    
+    alert(`${deletedCount}개의 계측기가 삭제되었습니다.`);
+    localStorage.setItem('instrumentsByYear', JSON.stringify(instrumentsByYear));
+    renderInstrumentList();
+    renderStatusList();
+    renderHomeYearSummary();
+    renderHistoryList();
+}
+// 연도 목록 생성 함수 추가
+function generateYearOptions() {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let i = currentYear - 3; i <= currentYear + 3; i++) {
+        years.push(i);
+    }
+    return years;
+}
+
+// 연도 옵션 초기화 함수
+function initializeYearOptions() {
+    const years = generateYearOptions();
+    const currentYear = new Date().getFullYear();
+    
+    // 등록 폼 연도 옵션 설정
+    const regYearSelect = document.getElementById('reg-year');
+    if (regYearSelect) {
+        regYearSelect.innerHTML = years.map(y => 
+            `<option value="${y}" ${y === currentYear ? 'selected' : ''}>${y}</option>`
+        ).join('');
+        // 교정번호 접두사 업데이트
+        updateCalibrationNumber();
+    }
+    
+    // 검교정 현황 연도 옵션 설정
+    const statusYearSelect = document.getElementById('status-year');
+    if (statusYearSelect) {
+        statusYearSelect.innerHTML = years.map(y => 
+            `<option value="${y}" ${y === currentYear ? 'selected' : ''}>${y}</option>`
+        ).join('');
+    }
+    
+    // 계측기 List 연도 옵션 설정
+    const listYearSelect = document.getElementById('list-year');
+    if (listYearSelect) {
+        listYearSelect.innerHTML = years.map(y => 
+            `<option value="${y}" ${y === currentYear ? 'selected' : ''}>${y}</option>`
+        ).join('');
+    }
+}
+
+// 교정번호 접두사 업데이트 함수
+function updateCalibrationNumber() {
+    const yearSelect = document.getElementById('reg-year');
+    const yearPrefix = document.getElementById('reg-year-prefix');
+    const calibType = document.getElementById('reg-calib-type');
+    
+    if (yearSelect && yearPrefix) {
+        const selectedYear = yearSelect.value;
+        yearPrefix.textContent = selectedYear;
+        
+        // 검교정 구분에 따라 접두사 표시 제어
+        if (calibType && calibType.value === '외부') {
+            yearPrefix.style.display = 'none';
+        } else {
+            yearPrefix.style.display = 'inline';
+        }
+    }
+}
+// 연도별 교정번호 생성 함수 추가
+function generateCalibrationNumber(originalNum, targetYear) {
+    if (!originalNum) return '';
+    // 원래 교정번호에서 연도 부분을 추출하고 새로운 연도로 교체
+    const yearMatch = originalNum.match(/^\d{4}/);
+    if (yearMatch) {
+        return originalNum.replace(/^\d{4}/, targetYear);
+    }
+    // 연도가 없는 경우 앞에 추가
+    return targetYear + '-' + originalNum;
+}
+
+// 계측기 정보 업데이트 함수 (연도별 표시용)
+function getInstrumentDisplayInfo(inst, targetYear) {
+    const currentYear = new Date().getFullYear();
+    const registeredYear = parseInt(inst.year);
+    
+    // 현재 연도 이후로 선택된 경우
+    if (targetYear > currentYear) {
+        // 해당 연도에 검교정 일자가 등록되어 있는지 확인
+        if (inst.calibDate && inst.calibDate.trim() !== '') {
+            // 검교정 일자가 있는 경우: 교정일은 검교정 일자로 업데이트, 차기 교정 예정일도 업데이트
+            const calibDate = new Date(inst.calibDate);
+            
+            // 차기 교정 예정일 계산 (검교정 일자 + 교정주기)
+            const nextCalibDate = new Date(calibDate);
+            nextCalibDate.setFullYear(nextCalibDate.getFullYear() + inst.cycle);
+            const newNextDate = nextCalibDate.toISOString().slice(0, 10);
+            
+            return {
+                ...inst,
+                date: inst.calibDate, // 교정일을 검교정 일자로 업데이트
+                nextDate: newNextDate, // 차기 교정 예정일 업데이트
+                unit: inst.unit // 단위 정보 포함
+            };
+        } else {
+            // 검교정 일자가 없으면 원래 값 유지
+            return {
+                ...inst,
+                date: inst.date, // 원래 교정일 유지
+                nextDate: inst.nextDate, // 원래 차기 교정 예정일 유지
+                unit: inst.unit // 단위 정보 포함
+            };
+        }
+    }
+    
+    // 현재 연도 이하인 경우 원본 정보 그대로 반환
+    return {
+        ...inst,
+        unit: inst.unit // 단위 정보 포함
+    };
+}
+
+// 홈화면 전체 계획 대비 실적 가로 막대 그래프 렌더링
+function renderHomeOverallProgress() {
+    const currentYear = new Date().getFullYear().toString();
+    const statusData = statusDataByYear[currentYear] || [];
+    
+    // 제목에 연도 추가
+    const titleElement = document.getElementById('overall-progress-title');
+    if (titleElement) {
+        titleElement.textContent = `${currentYear}년 전체 계획 대비 실적`;
+    }
+    
+    // 전체 계획과 실적 계산
+    const totalPlan = statusData.reduce((sum, item) => sum + item.plan, 0);
+    const totalActual = statusData.reduce((sum, item) => sum + item.actual, 0);
+    
+    // 달성률 계산
+    const percentage = totalPlan > 0 ? Math.round((totalActual / totalPlan) * 100) : 0;
+    
+    // 가로 막대 그래프 생성
+    const progressBar = document.getElementById('home-overall-progress');
+    const percentageText = document.getElementById('home-overall-percentage');
+    
+    if (progressBar && percentageText) {
+        // 진행률에 따른 색상 결정
+        let barColor = '#e74c3c'; // 빨간색 (낮은 달성률)
+        let textColor = '#e74c3c';
+        if (percentage >= 80) {
+            barColor = '#27ae60'; // 초록색 (높은 달성률)
+            textColor = '#27ae60';
+        } else if (percentage >= 60) {
+            barColor = '#f39c12'; // 주황색 (보통 달성률)
+            textColor = '#f39c12';
+        }
+        
+        progressBar.innerHTML = `
+            <div style="
+                width: 100%;
+                height: 40px;
+                background: #ecf0f1;
+                border-radius: 20px;
+                overflow: hidden;
+                position: relative;
+                box-shadow: inset 0 3px 6px rgba(0,0,0,0.1);
+                border: 2px solid #d0d6e1;
+            ">
+                <div style="
+                    width: ${Math.min(percentage, 100)}%;
+                    height: 100%;
+                    background: linear-gradient(90deg, ${barColor}, ${barColor}dd);
+                    border-radius: 18px;
+                    transition: width 1s ease-in-out;
+                    position: relative;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                ">
+                    <div style="
+                        position: absolute;
+                        right: 15px;
+                        top: 50%;
+                        transform: translateY(-50%);
+                        color: white;
+                        font-weight: bold;
+                        font-size: 1em;
+                        text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
+                    ">${totalActual}/${totalPlan}</div>
+                </div>
+            </div>
+        `;
+        
+        percentageText.innerHTML = `<span style="color:${textColor};">${percentage}% 달성</span>`;
+    }
+}
+
+// Excel 파일 처리 함수들
+let excelData = [];
+
+function uploadExcelFile() {
+    const fileInput = document.getElementById('excel-file');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        alert('Excel/CSV 파일을 선택해주세요.');
+        return;
+    }
+    
+    // 파일 처리 함수
+    const processFile = (fileContent) => {
+        try {
+            console.log('파일 읽기 시작');
+            let jsonData;
+            
+            // 파일 확장자에 따라 처리 방식 결정
+            if (file.name.toLowerCase().endsWith('.csv')) {
+                // CSV 파일 처리
+                const csvText = fileContent.toString();
+                jsonData = parseCSV(csvText);
+            } else {
+                // Excel 파일 처리
+                const data = new Uint8Array(fileContent);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            }
+            
+            if (jsonData.length < 2) {
+                alert('Excel 파일에 데이터가 없습니다.');
+                return;
+            }
+            
+            // 헤더 확인
+            const headers = jsonData[0];
+            const requiredHeaders = ['계측기명', 'Service', '유형', '등록연도', '교정번호', '교정일', '교정주기', '차기 교정 예정일', '허용오차', '검교정구분', '사용검교정기'];
+            
+            const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
+            if (missingHeaders.length > 0) {
+                let errorMessage = `필수 컬럼이 누락되었습니다:\n\n`;
+                errorMessage += `❌ 누락된 컬럼: ${missingHeaders.join(', ')}\n\n`;
+                errorMessage += `✅ 필수 컬럼 (정확히 일치해야 함):\n`;
+                errorMessage += `${requiredHeaders.join(', ')}\n\n`;
+                errorMessage += `📋 현재 파일의 컬럼:\n`;
+                errorMessage += `${headers.join(', ')}\n\n`;
+                errorMessage += `💡 해결 방법:\n`;
+                errorMessage += `1. 컬럼명을 정확히 일치시켜주세요\n`;
+                errorMessage += `2. 공백이나 특수문자가 없는지 확인해주세요\n`;
+                errorMessage += `3. UTF-8 인코딩으로 저장해주세요`;
+                
+                alert(errorMessage);
+                return;
+            }
+            
+            // 데이터 처리
+            excelData = [];
+            for (let i = 1; i < jsonData.length; i++) {
+                const row = jsonData[i];
+                if (row.length > 0 && row[0]) { // 첫 번째 컬럼이 비어있지 않은 경우만
+                    const instrument = {
+                        name: row[headers.indexOf('계측기명')] || '',
+                        service: row[headers.indexOf('Service')] || '',
+                        type: row[headers.indexOf('유형')] || '',
+                        year: row[headers.indexOf('등록연도')] || new Date().getFullYear().toString(),
+                        num: row[headers.indexOf('교정번호')] || '',
+                        date: row[headers.indexOf('교정일')] || '',
+                        cycle: parseInt(row[headers.indexOf('교정주기')]) || 1,
+                        nextDate: row[headers.indexOf('차기 교정 예정일')] || '',
+                        allowError: row[headers.indexOf('허용오차')] || '',
+                        calibType: row[headers.indexOf('검교정구분')] || '자체',
+                        calibEquipment: row[headers.indexOf('사용검교정기')] || ''
+                    };
+                    
+                    // 차기 교정 예정일이 없으면 자동 계산
+                    if (!instrument.nextDate && instrument.date) {
+                        const calibDate = new Date(instrument.date);
+                        calibDate.setFullYear(calibDate.getFullYear() + instrument.cycle);
+                        instrument.nextDate = calibDate.toISOString().slice(0, 10);
+                    }
+                    
+                    excelData.push(instrument);
+                }
+            }
+            
+            if (excelData.length === 0) {
+                alert('처리할 데이터가 없습니다.');
+                return;
+            }
+            
+            // 미리보기 표시
+            showExcelPreview();
+            
+        } catch (error) {
+            console.error('파일 처리 오류:', error);
+            
+            let errorMessage = '파일 처리 중 오류가 발생했습니다.\n\n';
+            errorMessage += '오류 유형: ' + error.message + '\n\n';
+            errorMessage += '해결 방법:\n';
+            errorMessage += '1. CSV 파일인 경우: UTF-8 인코딩으로 저장\n';
+            errorMessage += '2. Excel 파일인 경우: Excel 97-2003 형식으로 저장\n';
+            errorMessage += '3. 파일이 손상되지 않았는지 확인\n';
+            errorMessage += '4. 필수 컬럼이 모두 포함되어 있는지 확인\n\n';
+            errorMessage += '필수 컬럼: 계측기명, Service, 유형, 교정번호, 교정일, 교정주기, 허용오차, 검교정구분, 사용검교정기';
+            
+            alert(errorMessage);
+        }
+    };
+    
+    // CSV 파일인 경우 텍스트로 읽기
+    if (file.name.toLowerCase().endsWith('.csv')) {
+        const reader = new FileReader();
+        reader.onload = (e) => processFile(e.target.result);
+        reader.onerror = (e) => {
+            console.error('CSV 파일 읽기 오류:', e);
+            alert('CSV 파일을 읽는 중 오류가 발생했습니다.');
+        };
+        reader.readAsText(file, 'UTF-8');
+    } else {
+        // Excel 파일인 경우 ArrayBuffer로 읽기
+        const reader = new FileReader();
+        reader.onload = (e) => processFile(e.target.result);
+        reader.onerror = (e) => {
+            console.error('Excel 파일 읽기 오류:', e);
+            alert('Excel 파일을 읽는 중 오류가 발생했습니다.');
+        };
+        reader.readAsArrayBuffer(file);
+    }
+}
+
+function showExcelPreview() {
+    const previewDiv = document.getElementById('excel-data-preview');
+    const previewSection = document.getElementById('excel-preview');
+    
+    let html = '<table style="width: 100%; border-collapse: collapse; font-size: 0.9em;">';
+    html += '<thead><tr style="background: #f0f4fa;">';
+    html += '<th style="padding: 8px; border: 1px solid #ddd;">계측기명</th>';
+    html += '<th style="padding: 8px; border: 1px solid #ddd;">Service</th>';
+    html += '<th style="padding: 8px; border: 1px solid #ddd;">유형</th>';
+    html += '<th style="padding: 8px; border: 1px solid #ddd;">등록연도</th>';
+    html += '<th style="padding: 8px; border: 1px solid #ddd;">교정번호</th>';
+    html += '<th style="padding: 8px; border: 1px solid #ddd;">교정일</th>';
+    html += '<th style="padding: 8px; border: 1px solid #ddd;">교정주기</th>';
+    html += '<th style="padding: 8px; border: 1px solid #ddd;">차기 교정 예정일</th>';
+    html += '<th style="padding: 8px; border: 1px solid #ddd;">검교정구분</th>';
+    html += '</tr></thead><tbody>';
+    
+    excelData.forEach((item, index) => {
+        html += `<tr style="border-bottom: 1px solid #eee;">`;
+        html += `<td style="padding: 8px; border: 1px solid #ddd;">${item.name}</td>`;
+        html += `<td style="padding: 8px; border: 1px solid #ddd;">${item.service}</td>`;
+        html += `<td style="padding: 8px; border: 1px solid #ddd;">${item.type}</td>`;
+        html += `<td style="padding: 8px; border: 1px solid #ddd;">${item.year}</td>`;
+        html += `<td style="padding: 8px; border: 1px solid #ddd;">${item.num}</td>`;
+        html += `<td style="padding: 8px; border: 1px solid #ddd;">${item.date}</td>`;
+        html += `<td style="padding: 8px; border: 1px solid #ddd;">${item.cycle}년</td>`;
+        html += `<td style="padding: 8px; border: 1px solid #ddd;">${item.nextDate}</td>`;
+        html += `<td style="padding: 8px; border: 1px solid #ddd;">${item.calibType}</td>`;
+        html += `</tr>`;
+    });
+    
+    html += '</tbody></table>';
+    html += `<p style="margin-top: 10px; color: #666;">총 ${excelData.length}개의 계측기가 등록됩니다.</p>`;
+    
+    previewDiv.innerHTML = html;
+    previewSection.style.display = 'block';
+}
+
+function confirmExcelUpload() {
+    console.log('=== Excel 일괄등록 시작 ===');
+    console.log('excelData:', excelData);
+    
+    if (excelData.length === 0) {
+        alert('등록할 데이터가 없습니다.');
+        return;
+    }
+    
+    // 사용자에게 기존 데이터 처리 방법 선택
+    const choice = confirm('Excel 데이터로 기존 데이터를 교체하시겠습니까?\n\n' +
+                          '확인: 기존 데이터를 모두 삭제하고 Excel 데이터로 교체\n' +
+                          '취소: 중복 체크 후 새 데이터만 추가');
+    
+    console.log('사용자 선택:', choice);
+    
+    if (choice) {
+        // 기존 데이터 완전 초기화
+        console.log('기존 데이터 초기화 선택됨');
+        instrumentsByYear = {};
+        // localStorage도 초기화
+        localStorage.removeItem('instrumentsByYear');
+        console.log('instrumentsByYear 및 localStorage 초기화 완료');
+    } else {
+        console.log('중복 체크 모드 선택됨');
+    }
+    
+    const currentYear = new Date().getFullYear().toString();
+    console.log('현재 연도:', currentYear);
+    console.log('현재 instrumentsByYear:', instrumentsByYear);
+    
+    // 데이터 구조 확인
+    if (!instrumentsByYear) {
+        instrumentsByYear = {};
+        console.log('instrumentsByYear 초기화');
+    }
+    
+    let successCount = 0;
+    let duplicateCount = 0;
+    
+    if (choice) {
+        // 데이터 교체 모드: 모든 Excel 데이터를 기존 데이터로 교체
+        console.log('=== 데이터 교체 모드 ===');
+        
+        excelData.forEach((item, index) => {
+            console.log(`처리 중: ${index + 1}/${excelData.length} - ${item.name} (${item.num})`);
+            
+            // 고유 ID 생성
+            const timestamp = Date.now();
+            const random = Math.random().toString(36).substr(2, 9);
+            item.id = `${timestamp}-${random}`;
+            
+            // 해당 연도 배열이 없으면 생성
+            if (!instrumentsByYear[item.year]) {
+                instrumentsByYear[item.year] = [];
+                console.log(`${item.year}년 배열 생성`);
+            }
+            
+            // 데이터 추가
+            instrumentsByYear[item.year].push(item);
+            successCount++;
+            console.log(`✅ 등록: ${item.name} (${item.num})`);
+        });
+        
+    } else {
+        // 중복 체크 모드: 중복 확인 후 새 데이터만 추가
+        console.log('=== 중복 체크 모드 ===');
+        
+        excelData.forEach((item, index) => {
+            console.log(`처리 중: ${index + 1}/${excelData.length} - ${item.name} (${item.num})`);
+            
+            let shouldAdd = true;
+            
+            // 중복 확인
+            Object.keys(instrumentsByYear).forEach(year => {
+                const list = instrumentsByYear[year] || [];
+                const nameDuplicate = list.some(inst => inst.name === item.name);
+                const numDuplicate = list.some(inst => inst.num === item.num);
+                
+                if (nameDuplicate || numDuplicate) {
+                    shouldAdd = false;
+                    duplicateCount++;
+                    console.log(`❌ 중복 제외: ${item.name} (${item.num})`);
+                }
+            });
+            
+            if (shouldAdd) {
+                // 고유 ID 생성
+                const timestamp = Date.now();
+                const random = Math.random().toString(36).substr(2, 9);
+                item.id = `${timestamp}-${random}`;
+                
+                // 해당 연도 배열이 없으면 생성
+                if (!instrumentsByYear[item.year]) {
+                    instrumentsByYear[item.year] = [];
+                    console.log(`${item.year}년 배열 생성`);
+                }
+                
+                // 데이터 추가
+                instrumentsByYear[item.year].push(item);
+                successCount++;
+                console.log(`✅ 등록: ${item.name} (${item.num})`);
+            }
+        });
+    }
+    
+    console.log(`\n=== 최종 결과 ===`);
+    console.log(`총 Excel 데이터: ${excelData.length}개`);
+    console.log(`성공 등록: ${successCount}개`);
+    console.log(`중복 제외: ${duplicateCount}개`);
+    console.log(`최종 instrumentsByYear:`, instrumentsByYear);
+    
+    console.log('\n=== 등록 결과 ===');
+    console.log('최종 instrumentsByYear:', instrumentsByYear);
+    
+    // 결과 메시지
+    let message = `일괄 등록이 완료되었습니다!\n\n`;
+    message += `✅ 성공: ${successCount}개\n`;
+    if (duplicateCount > 0) {
+        message += `⚠️ 중복 제외: ${duplicateCount}개\n`;
+    }
+    message += `\n📋 등록된 계측기는 '계측기 List'에서 확인할 수 있습니다.`;
+    
+    alert(message);
+    
+    // UI 초기화
+    document.getElementById('excel-file').value = '';
+    document.getElementById('excel-preview').style.display = 'none';
+    excelData = [];
+    
+    // 데이터를 localStorage에 저장
+    localStorage.setItem('instrumentsByYear', JSON.stringify(instrumentsByYear));
+    console.log('localStorage에 저장 완료');
+    
+    // 저장된 데이터 확인
+    const savedData = localStorage.getItem('instrumentsByYear');
+    console.log('저장된 데이터 확인:', savedData);
+    
+    // 모든 화면 업데이트
+    try {
+        console.log('화면 업데이트 시작...');
+        
+        renderHomeChart();
+        console.log('✅ 홈 차트 업데이트 완료');
+        
+        renderHomeYearSummary();
+        console.log('✅ 홈 연도 요약 업데이트 완료');
+        
+        renderInstrumentList();
+        console.log('✅ 계측기 리스트 업데이트 완료');
+        
+        renderStatusList();
+        console.log('✅ 상태 리스트 업데이트 완료');
+        
+        renderHistoryList();
+        console.log('✅ 이력 리스트 업데이트 완료');
+        
+        console.log('모든 화면 업데이트 완료');
+    } catch (error) {
+        console.error('❌ 화면 업데이트 중 오류:', error);
+    }
+    
+    // 일괄등록 후 계측기 List 페이지로 자동 이동
+    console.log('계측기 List 페이지로 이동...');
+    showPage('list');
+}
+
+// CSV 파싱 함수
+function parseCSV(csvText) {
+    try {
+        // 줄바꿈 문자 정규화 (Windows, Mac, Unix 모두 지원)
+        const normalizedText = csvText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        const lines = normalizedText.split('\n');
+        const result = [];
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (line) {
+                // 쉼표로 분리하되, 따옴표 안의 쉼표는 무시
+                const values = [];
+                let current = '';
+                let inQuotes = false;
+                
+                for (let j = 0; j < line.length; j++) {
+                    const char = line[j];
+                    if (char === '"') {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        values.push(current.trim());
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                values.push(current.trim());
+                result.push(values);
+            }
+        }
+        
+        return result;
+    } catch (error) {
+        console.error('CSV 파싱 오류:', error);
+        throw new Error('CSV 파일 형식이 올바르지 않습니다.');
+    }
+}
+
+// Excel.js 라이브러리 추가
+function loadExcelLibrary() {
+    if (typeof XLSX === 'undefined') {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        script.onload = function() {
+            console.log('Excel.js 라이브러리가 로드되었습니다.');
+        };
+        document.head.appendChild(script);
+    }
+}
+
+// Excel 미리보기 초기화 함수
+function resetExcelPreview() {
+    excelData = [];
+    document.getElementById('excel-preview').style.display = 'none';
+    document.getElementById('excel-data-preview').innerHTML = '';
+}
+
+// 시스템 테스트 함수
+function testSystem() {
+    console.log('=== 시스템 테스트 시작 ===');
+    
+    // 데이터 상태 확인
+    console.log('instrumentsByYear:', instrumentsByYear);
+    console.log('localStorage 데이터:', localStorage.getItem('instrumentsByYear'));
+    
+    // 함수 존재 확인
+    console.log('showPage 함수:', typeof showPage);
+    console.log('renderHomeChart 함수:', typeof renderHomeChart);
+    console.log('renderInstrumentList 함수:', typeof renderInstrumentList);
+    
+    // DOM 요소 확인
+    const elements = ['page-home', 'page-register', 'page-list', 'page-status', 'page-history'];
+    elements.forEach(id => {
+        const element = document.getElementById(id);
+        console.log(`${id} 요소:`, element ? '존재' : '없음');
+    });
+    
+    // 테스트 데이터 추가
+    if (!instrumentsByYear['2025']) {
+        instrumentsByYear['2025'] = [];
+    }
+    
+    const testInstrument = {
+        id: Date.now(),
+        name: '테스트 계측기',
+        service: 'TEST',
+        type: '테스트',
+        num: '2025-TEST-001',
+        date: '2025-01-01',
+        cycle: 1,
+        nextDate: '2026-01-01',
+        allowError: '0.1',
+        calibType: '자체',
+        calibEquipment: '테스트기',
+        year: '2025'
+    };
+    
+    instrumentsByYear['2025'].push(testInstrument);
+    localStorage.setItem('instrumentsByYear', JSON.stringify(instrumentsByYear));
+    
+    // 화면 업데이트
+    renderHomeChart();
+    renderHomeYearSummary();
+    renderInstrumentList();
+    
+    alert('시스템 테스트 완료! 콘솔을 확인해주세요.');
+}
+
+// 데이터 디버그 함수
+function debugData() {
+    console.log('=== 데이터 디버그 시작 ===');
+    
+    // 현재 메모리 데이터
+    console.log('메모리 instrumentsByYear:', instrumentsByYear);
+    
+    // localStorage 데이터
+    const savedData = localStorage.getItem('instrumentsByYear');
+    console.log('localStorage 원본 데이터:', savedData);
+    
+    if (savedData) {
+        try {
+            const parsedData = JSON.parse(savedData);
+            console.log('localStorage 파싱된 데이터:', parsedData);
+            
+            // 데이터 비교
+            console.log('메모리와 localStorage 데이터 비교:');
+            Object.keys(parsedData).forEach(year => {
+                const memoryData = instrumentsByYear[year] || [];
+                const storageData = parsedData[year] || [];
+                console.log(`${year}년 - 메모리: ${memoryData.length}개, 저장소: ${storageData.length}개`);
+                
+                if (memoryData.length !== storageData.length) {
+                    console.log(`⚠️ ${year}년 데이터 불일치!`);
+                    console.log('메모리 데이터:', memoryData);
+                    console.log('저장소 데이터:', storageData);
+                }
+            });
+        } catch (error) {
+            console.error('localStorage 파싱 오류:', error);
+        }
+    }
+    
+    // 데이터 강제 동기화
+    if (savedData) {
+        try {
+            const parsedData = JSON.parse(savedData);
+            instrumentsByYear = parsedData;
+            console.log('✅ 데이터 강제 동기화 완료');
+            
+            // 화면 업데이트
+            renderInstrumentList();
+            renderHomeYearSummary();
+            
+            alert('데이터 디버그 완료! 데이터가 동기화되었습니다.');
+        } catch (error) {
+            console.error('데이터 동기화 오류:', error);
+            alert('데이터 동기화 중 오류가 발생했습니다.');
+        }
+    } else {
+        alert('localStorage에 저장된 데이터가 없습니다.');
+    }
+}
+
+
+
+window.selectHistoryInstrument = selectHistoryInstrument;
+window.addHistoryEntry = addHistoryEntry;
+
+function addHistoryEntry(idx) {
+    const inst = window._allInstrumentsForHistory[idx];
+    const year = prompt('연도를 입력하세요 (예: 2025)');
+    if (!year) return;
+    const desc = prompt('이력 내용을 입력하세요');
+    if (!desc) return;
+    inst.history.push({ year, desc });
+    renderHistoryList();
+}
+
+function generatePdfWithHtml2Pdf(num){
+    console.log('generatePdfWithHtml2Pdf 함수 호출됨, num:', num);
+    console.log('html2pdf 라이브러리 확인:', typeof html2pdf);
+    
+    // html2pdf 라이브러리가 없으면 기존 방법 사용
+    if (typeof html2pdf === 'undefined') {
+        console.log('html2pdf 라이브러리가 없음, 기존 generatePdf 함수 사용');
+        generatePdf(num);
+        return;
+    }
+    
+    const year = document.getElementById('status-year').value;
+    
+    // 모든 연도의 계측기를 합쳐서 해당 계측기 찾기
+    let allInstruments = [];
+    Object.values(instrumentsByYear).forEach(yearArr => {
+        allInstruments = allInstruments.concat(yearArr);
+    });
+    
+    const inst = allInstruments.find(inst => inst.num === num);
+    
+    if (!inst) {
+        alert('계측기를 찾을 수 없습니다. 번호: ' + num);
+        return;
+    }
+    
+    // 현재 연도의 검교정 데이터 가져오기
+    const yearData = inst.yearData && inst.yearData[year];
+    const calibDate = yearData ? yearData.calibDate : '';
+    const maxError = yearData ? yearData.maxError : '';
+    const result = yearData ? yearData.result : '';
+    
+    // HTML 생성
+    const htmlContent = `
+        <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 800px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h1 style="color: #2c3e50; margin: 0;">Instrument Calibration Certificate</h1>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold; width: 150px;">Instrument Name</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">${inst.name}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Service</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">${inst.service}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Type</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">${inst.type}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Calibration No</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">${inst.num}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Calibration Date</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">${inst.date}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Cycle</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">${inst.cycle} years</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Next Calibration</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">${inst.nextDate}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Allowable Error</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">±${inst.allowError}${inst.unit ? ' ' + inst.unit : ''}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Calibration Date</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">${calibDate || '-'}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Max Error</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">${maxError || '-'}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Result</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">${result || '-'}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div style="margin-top: 30px; display: flex; justify-content: space-between;">
+                <div style="text-align: center;">
+                    <div style="border-bottom: 1px solid #000; width: 100px; margin-bottom: 5px;"></div>
+                    <span>Manager</span>
+                </div>
+                <div style="text-align: center;">
+                    <div style="border-bottom: 1px solid #000; width: 100px; margin-bottom: 5px;"></div>
+                    <span>Checker</span>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px; text-align: center; font-size: 12px; color: #666;">
+                This certificate proves the calibration result of the instrument.
+            </div>
+        </div>
+    `;
+    
+    console.log('HTML 내용:', htmlContent);
+    
+    // 임시 div 생성
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlContent;
+    tempDiv.style.position = 'absolute';
+    tempDiv.style.left = '-9999px';
+    tempDiv.style.backgroundColor = 'white';
+    tempDiv.style.width = '800px';
+    document.body.appendChild(tempDiv);
+    
+    console.log('임시 div 생성됨:', tempDiv);
+    
+    // PDF 생성 옵션 단순화
+    const opt = {
+        margin: [10, 10, 10, 10],
+        filename: `${inst.name}_Certificate.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { 
+            scale: 1,
+            useCORS: false,
+            allowTaint: false,
+            backgroundColor: '#ffffff'
+        },
+        jsPDF: { 
+            unit: 'mm', 
+            format: 'a4', 
+            orientation: 'portrait',
+            compress: true
+        }
+    };
+    
+    console.log('PDF 옵션:', opt);
+    
+    // PDF 생성 - 더 간단한 방법 사용
+    try {
+        html2pdf()
+            .from(tempDiv)
+            .set(opt)
+            .save()
+            .then(() => {
+                console.log('PDF 생성 완료 (html2pdf)');
+                document.body.removeChild(tempDiv);
+            })
+            .catch(error => {
+                console.error('PDF 생성 중 오류 (html2pdf):', error);
+                document.body.removeChild(tempDiv);
+                // 오류 발생 시 기존 방법으로 대체
+                console.log('기존 generatePdf 함수로 대체');
+                generatePdf(num);
+            });
+    } catch (error) {
+        console.error('html2pdf 초기화 오류:', error);
+        document.body.removeChild(tempDiv);
+        // 오류 발생 시 기존 방법으로 대체
+        console.log('기존 generatePdf 함수로 대체');
+        generatePdf(num);
+    }
+}
+
+function generatePdfSimple(num){
+    console.log('generatePdfSimple 함수 호출됨, num:', num);
+    
+    const year = document.getElementById('status-year').value;
+    
+    // 모든 연도의 계측기를 합쳐서 해당 계측기 찾기
+    let allInstruments = [];
+    Object.values(instrumentsByYear).forEach(yearArr => {
+        allInstruments = allInstruments.concat(yearArr);
+    });
+    
+    const inst = allInstruments.find(inst => inst.num === num);
+    
+    if (!inst) {
+        alert('계측기를 찾을 수 없습니다. 번호: ' + num);
+        return;
+    }
+    
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+        alert('PDF 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인하세요.');
+        return;
+    }
+    
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        // 기본 폰트 사용
+        doc.setFont('helvetica', 'normal');
+        
+        // 제목
+        doc.setFontSize(20);
+        doc.text('Instrument Calibration Certificate', 105, 30, {align:'center'});
+        
+        // 구분선
+        doc.setDrawColor(200, 200, 200);
+        doc.line(20, 40, 190, 40);
+        
+        // 정보 테이블
+        doc.setFontSize(12);
+        let y = 60;
+        
+        // 왼쪽 열 (라벨)
+        doc.setFont('helvetica', 'bold');
+        doc.text('Instrument Name:', 20, y);
+        doc.text('Service:', 20, y + 12);
+        doc.text('Type:', 20, y + 24);
+        doc.text('Calibration No:', 20, y + 36);
+        doc.text('Calibration Date:', 20, y + 48);
+        doc.text('Cycle:', 20, y + 60);
+        doc.text('Next Calibration:', 20, y + 72);
+        doc.text('Allowable Error:', 20, y + 84);
+        
+        // 현재 연도의 검교정 데이터 가져오기
+        const yearData = inst.yearData && inst.yearData[year];
+        const calibDate = yearData ? yearData.calibDate : '';
+        const maxError = yearData ? yearData.maxError : '';
+        const result = yearData ? yearData.result : '';
+        
+        doc.text('Calibration Date:', 20, y + 96);
+        doc.text('Max Error:', 20, y + 108);
+        doc.text('Result:', 20, y + 120);
+        
+        // 오른쪽 열 (값)
+        doc.setFont('helvetica', 'normal');
+        doc.text(inst.name, 80, y);
+        doc.text(inst.service, 80, y + 12);
+        doc.text(inst.type, 80, y + 24);
+        doc.text(inst.num, 80, y + 36);
+        doc.text(inst.date, 80, y + 48);
+        doc.text(inst.cycle + ' years', 80, y + 60);
+        doc.text(inst.nextDate, 80, y + 72);
+        doc.text('±' + inst.allowError + (inst.unit ? ' ' + inst.unit : ''), 80, y + 84);
+        doc.text(calibDate || '-', 80, y + 96);
+        doc.text(maxError || '-', 80, y + 108);
+        doc.text(result || '-', 80, y + 120);
+        
+        // 구분선
+        doc.setDrawColor(200, 200, 200);
+        doc.line(20, 150, 190, 150);
+        
+        // 서명란
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Manager:', 30, 170);
+        doc.text('Checker:', 120, 170);
+        
+        // 서명 박스
+        doc.setDrawColor(100, 100, 100);
+        doc.rect(30, 175, 60, 20);
+        doc.rect(120, 175, 60, 20);
+        
+        // 하단 메시지
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text('This certificate proves the calibration result of the instrument.', 105, 220, {align:'center'});
+        
+        // 파일 저장
+        doc.save(`${inst.name}_Certificate.pdf`);
+        console.log('PDF 생성 완료 (Simple)');
+        
+    } catch (error) {
+        console.error('PDF 생성 중 오류:', error);
+        alert('PDF 생성 중 오류가 발생했습니다: ' + error.message);
+    }
+}
+
+function generatePdfKorean(num){
+    console.log('generatePdfKorean 함수 호출됨, num:', num);
+    
+    const year = document.getElementById('status-year').value;
+    
+    // 모든 연도의 계측기를 합쳐서 해당 계측기 찾기
+    let allInstruments = [];
+    Object.values(instrumentsByYear).forEach(yearArr => {
+        allInstruments = allInstruments.concat(yearArr);
+    });
+    
+    const inst = allInstruments.find(inst => inst.num === num);
+    
+    if (!inst) {
+        alert('계측기를 찾을 수 없습니다. 번호: ' + num);
+        return;
+    }
+    
+    // 현재 연도의 검교정 데이터 가져오기
+    const yearData = inst.yearData && inst.yearData[year];
+    const calibDate = yearData ? yearData.calibDate : '';
+    const maxError = yearData ? yearData.maxError : '';
+    const result = yearData ? yearData.result : '';
+    
+    // jsPDF 사용하여 한글 PDF 생성
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    // 기본 폰트 사용 (한글 폰트 로드 문제로 인해)
+    doc.setFont('helvetica');
+    console.log('기본 폰트 사용 (helvetica)');
+    
+    // 폰트 크기 설정
+    doc.setFontSize(12);
+    
+    // 제목
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('계측기 검교정 성적서', 105, 30, { align: 'center' });
+    
+    // 테이블 데이터 (한글 라벨, 한글 데이터)
+    const tableData = [
+        ['계측기명', inst.name],
+        ['Service', inst.service],
+        ['계측기 유형', inst.type],
+        ['교정번호', inst.num],
+        ['교정일', inst.date],
+        ['교정주기', inst.cycle + '년'],
+        ['차기 교정 예정일', inst.nextDate],
+        ['허용오차', '±' + inst.allowError + (inst.unit ? ' ' + inst.unit : '')],
+        ['검교정일', calibDate || '-'],
+        ['최대오차', maxError || '-'],
+        ['검교정 결과', result || '-']
+    ];
+    
+    // 테이블 그리기
+    let y = 50;
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    
+    tableData.forEach((row, index) => {
+        // 배경색 (짝수 행)
+        if (index % 2 === 0) {
+            doc.setFillColor(248, 249, 250);
+            doc.rect(20, y - 5, 170, 10, 'F');
+        }
+        
+        // 라벨 (굵게)
+        doc.setFont('helvetica', 'bold');
+        doc.text(row[0], 25, y);
+        
+        // 값
+        doc.setFont('helvetica', 'normal');
+        doc.text(row[1], 80, y);
+        
+        y += 12;
+    });
+    
+    // 기준값/측정값 표 추가 (자체 검교정인 경우만)
+    console.log('PDF 생성 - calibType:', inst.calibType, 'yearData:', yearData);
+    
+    // 임시 데이터도 확인
+    const temp = window._tempStatusEdits && window._tempStatusEdits[year] && window._tempStatusEdits[year][inst.num];
+    console.log('임시 데이터:', temp);
+    
+    if ((inst.calibType === '자체' || inst.calibType === '자체 검교정') && (yearData || temp)) {
+        console.log('표 추가 시작');
+        y += 10; // 위로 올림 (20에서 10으로 변경)
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        
+        // 표 제목
+        doc.setFont('helvetica', 'bold');
+        doc.text('기준값/측정값', 105, y, {align: 'center'});
+        y += 10;
+        
+        // 단위 추출 - 더 정확한 방법으로 개선
+        let unit = '';
+        if (inst.unit) {
+            unit = inst.unit;
+        } else if (inst.allowError) {
+            unit = extractUnitFromAllowError(inst.allowError);
+        }
+        console.log('추출된 단위:', unit, 'inst.unit:', inst.unit, 'inst.allowError:', inst.allowError);
+        
+        // 표 그리기
+        const tableX = 30;
+        const tableY = y;
+        const colWidth = 75;
+        const rowHeight = 8;
+        
+        // 표 테두리
+        doc.setDrawColor(100, 100, 100);
+        doc.rect(tableX, tableY, colWidth * 2, rowHeight * 4);
+        
+        // 헤더
+        doc.setFont('helvetica', 'bold');
+        doc.text('기준값', tableX + colWidth/2, tableY + 5, {align: 'center'});
+        doc.text('측정값', tableX + colWidth + colWidth/2, tableY + 5, {align: 'center'});
+        
+        // 세로 구분선
+        doc.line(tableX + colWidth, tableY, tableX + colWidth, tableY + rowHeight * 4);
+        
+        // 가로 구분선들
+        for (let i = 1; i <= 3; i++) {
+            doc.line(tableX, tableY + rowHeight * i, tableX + colWidth * 2, tableY + rowHeight * i);
+        }
+        
+        // 데이터 입력
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        
+        const std1 = (yearData && yearData.std1) || (temp && temp.std1) || '';
+        const meas1 = (yearData && yearData.meas1) || (temp && temp.meas1) || '';
+        const std2 = (yearData && yearData.std2) || (temp && temp.std2) || '';
+        const meas2 = (yearData && yearData.meas2) || (temp && temp.meas2) || '';
+        const std3 = (yearData && yearData.std3) || (temp && temp.std3) || '';
+        const meas3 = (yearData && yearData.meas3) || (temp && temp.meas3) || '';
+        
+            // 단위 표시 함수 (특수문자 처리)
+    const formatWithUnit = (value, unit) => {
+        if (!value) return '';
+        if (!unit) return value;
+        
+        // 특수문자를 일반 텍스트로 변환
+        let displayUnit = unit;
+        if (unit === '℃') {
+            displayUnit = '°C';  // 더 일반적인 표기법 사용
+        }
+        
+        return `${value} ${displayUnit}`;
+    };
+        
+        // 첫 번째 행
+        doc.text(formatWithUnit(std1, unit), tableX + colWidth/2, tableY + rowHeight + 5, {align: 'center'});
+        doc.text(formatWithUnit(meas1, unit), tableX + colWidth + colWidth/2, tableY + rowHeight + 5, {align: 'center'});
+        
+        // 두 번째 행
+        doc.text(formatWithUnit(std2, unit), tableX + colWidth/2, tableY + rowHeight * 2 + 5, {align: 'center'});
+        doc.text(formatWithUnit(meas2, unit), tableX + colWidth + colWidth/2, tableY + rowHeight * 2 + 5, {align: 'center'});
+        
+        // 세 번째 행
+        doc.text(formatWithUnit(std3, unit), tableX + colWidth/2, tableY + rowHeight * 3 + 5, {align: 'center'});
+        doc.text(formatWithUnit(meas3, unit), tableX + colWidth + colWidth/2, tableY + rowHeight * 3 + 5, {align: 'center'});
+        
+        y += rowHeight * 4 + 20; // 간격 늘림 (10에서 20으로 변경)
+    }
+    
+    // 서명란 (하나로 변경)
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    // 가운데 정렬로 계측기 담당 파트장 배치
+    doc.text('계측기 담당 파트장(인)', 105, y, {align: 'center'});
+    // 서명선
+    doc.line(35, y + 5, 175, y + 5); // 하나의 긴 선
+    
+    // 하단 문구 삭제 (설명문 없음)
+    // PDF 저장
+    const logoImg = 'data:image/png;base64,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';
+    const imgWidth = 60; // mm (기존 40)
+    const imgHeight = 25; // mm (기존 15)
+    const pageHeight = doc.internal.pageSize.getHeight();
+    doc.addImage(logoImg, 'PNG', 105 - imgWidth/2, pageHeight - imgHeight - 10, imgWidth, imgHeight);
+    doc.save(`${inst.name}_Certificate.pdf`);
+    console.log('한글 PDF 생성 완료');
+}
+
+// 허용오차에서 단위 추출 함수
+function extractUnitFromAllowError(allowError) {
+    if (!allowError) return '';
+    
+    console.log('=== 단위 추출 디버깅 ===');
+    console.log('입력값:', allowError);
+    console.log('입력값 길이:', allowError.length);
+    console.log('입력값 문자코드:', Array.from(allowError).map(c => c.charCodeAt(0)));
+    
+    // 단위 매핑 테이블
+    const unitMapping = {
+        'kg/cm2': 'kg/cm2',
+        'kg/m2': 'kg/m2', 
+        'kg/m3': 'kg/m3',
+        'g/cm3': 'g/cm3',
+        'g/cm2': 'g/cm2',
+        'g/m3': 'g/m3',
+        'mmhg': 'mmhg',
+        'mmHg': 'mmHg',
+        'kPa': 'kPa',
+        'Pa': 'Pa',
+        '%': '%',
+        '%FS': '%FS',
+        'FS': 'FS'
+    };
+    
+    // 온도 단위 특별 처리
+    if (allowError.includes('℃')) {
+        console.log('온도 단위 추출: ℃', '원본:', allowError);
+        return '℃';  // 원래 단위 유지
+    }
+    if (allowError.includes('C') || allowError.includes('c')) {
+        console.log('온도 단위 추출: C', '원본:', allowError);
+        return 'C';
+    }
+    
+    // 매핑 테이블에서 찾기
+    for (const [key, value] of Object.entries(unitMapping)) {
+        if (allowError.includes(key)) {
+            console.log('매핑된 단위:', value, '원본:', allowError);
+            return value;
+        }
+    }
+    
+    // 기본 처리: 숫자와 기호 제거
+    let unit = allowError.replace(/[±\d\s\.]/g, '');
+    
+    // 특수 유니코드 문자를 일반 텍스트로 변환 (PDF 호환성)
+    unit = unit.replace(/㎠/g, 'cm2');
+    unit = unit.replace(/㎥/g, 'm3');
+    unit = unit.replace(/㎦/g, 'm3');
+    
+    console.log('기본 처리 단위:', unit, '원본:', allowError);
+    console.log('=== 단위 추출 완료 ===');
+    return unit;
+}
+
+// approveStatusRow 함수 추가
+function approveStatusRow(num) {
+    const year = document.getElementById('status-year').value;
+    const list = instrumentsByYear[year]||[];
+    const idx = list.findIndex(inst=>inst.num===num);
+    if(idx===-1) return;
+    if(!list[idx].yearData) list[idx].yearData = {};
+    if(!list[idx].yearData[year]) list[idx].yearData[year] = {};
+    list[idx].yearData[year].approved = true;
+    localStorage.setItem('instrumentsByYear', JSON.stringify(instrumentsByYear));
+    alert('승인되었습니다! 도장 포함 성적서가 자동 발급됩니다.');
+    generatePdfKoreanWithSeal(num); // 도장 포함 PDF 자동 생성
+    renderStatusList();
+}
+
+// 도장 포함 성적서 PDF 생성 함수
+function generatePdfKoreanWithSeal(num) {
+    // 도장 이미지 base64
+    // 도장 이미지 base64
+    const sealImg = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAAACtWK6eAAAABmJLR0QA/wD/AP+gvaeTAAAgAElEQVR4nO2de5wcZZX3v6d6ejK5k0Ay09UBAgFRAyaZmWAEDWZXgQTk6uIFvOHrDS/rFW+4Kh9EQPHV19u6q7LLCwrsuypCMMpqQCAC6e5cIIJAQgIzPROCBHKdmZ6u8/5RPaGnquZe3VXVXd/PJ5B+nuqqk6r+1XM7zzkQExMTExMTExMTExMTExMTExMTExMTYSRoA+qVB5nbnKDx6AR6lGLNFoxpoEm7VgqKtU8wXhCKOwx0xyJ2PhesxfVJLJAqsInmqf0k/kHhVIF2oA04bIyn2S2QAckorGugf+0idu6vgLkxZcQCqRAPkT48gb7NgPMUlgOTfL5ED/BnRX7Th9x6Ch0v+Hz+GGKB+IqC5EidDvJhYBXQWKVL94KsttB/XUr+7ipdsy6IBeIDGdqS0P1OQT8DnBSwOZsEvf4lun65AvoDtiXyxAKZAAqygdQFFnK1wCvG+PX9IE+Dbge6FN0LUiidOSnIdCAFMh/0GGDqGM//OOiX2uj69Ri/F1NGLJBxsoH0Ygv9MbBsNMcrdAj8DvTPQLaVrr8JWKP8rpEjdYI9wJflCiuB9ChNXQfGR9ro2DzK42PKiAUyRjKYUwS+BnwKaBjh8E7gZkF+0UrnJj/tKAn0ncDFgDnC4QWF7wBXtpM/4KcdtU4skDGwgZalFsbNwPHDHyn3gl6/lfxdF0GxkjbdBonjMc+24DPAG4Y7VuEJQd/ZRle2kjbVErFARoGCkcW8XOBKIDnUcQJ3FzGuWErHw1U07xBZ0stArwL+cZjD+oArWsl/W0CrZFpkiQUyAg8ye0aSppuBs4c5bLMFnw3LFGuW1BlgfBv0xGEO+81B+t79ep7fWzXDIkgskGHIcOQCKN4usHCIQw4C1zUx6+qFbOmrpm0jsRYappP6qCDfYOgZsL9ZcO5S8n+rpm1RIhbIEKxn3skG1mrgCO8jZL2BXLyEjieratgY2Uj6FUX0ZmwXFy92Cbqqla5MNe2KCkbQBoSRDObpBtYf8RaHpXCt0nJq2MUBsJjOJ5qYdSrwbbzHHHMU+VOO9HDjlrolbkEcZDDPE7gVbzeRvQKXtJL/bbXt8oMsqfNBbgSmeVT3gry1jc47q21XmIkFUkaG9FmC/gpvcWxNYJ27mO4t1bbLTzLMOwms2wWO8ajuBT2vja41VTcspMQCKZHBPF3gdqDJo3pDgf6Vy3huZ7XtqgQPM6clQXINsMijukeQs1vp/GO17QojsUCALKk2kHvw6HoIek8fvecu44U9AZhWMTYw/zCLvt/ivbi414LTlpLfUG27wkbdC2QTzcf0k1gHtHhU399A8cxa3ZiUwZxioKsVeaNHdZeBdcoSurdX3bAQUdcCKb1FHwRO8Ki+r4HiyloVxwBbmDOth+TvgVM8qv96kL5l9byYWLfTvAqGRd9NeIhDYWOBnrOjIo7bIJHB/JcM5nlj/e5Cdu1TmlYBXt6+r55M441axy/SuhVIltTXgbOc5QodSeQtURpzLCB1rsDXBX6dw/z8WL/fzraXhMRKYIdH9XlZzK9M3MpoUpcCydGyUpAve1S9JOjpi+jsqLpRE0CRE1/+O9fkMN8/1nO08mzeong24HoxCHx1PeabJ2hmJKk7gWyiea5i/Bx3t8ECuaSNrseCsGtiaGHQJ/h+BvOosZ5lKTsfFXgX7o1chgE3Pcwcr4mMmqauBKJgFEnchMeMlSBf9XsVOUN6RZb0XVnM3VnMXVnS/3cd82b7eY0Szk1Qkw34xHhO1Er+twJXeVTNTZC8od7GI3UlkA2YH1Xw6CrI75bQ+Q2/rvMgs2dkMW8V9E+gK7FjYB0BeskkrNVrR96JOEbENZmgcOF4z7aE/NcFvFz3z8xifmS8540idSOQDbTMV7jao+q5In2X+rV5aD3mCUmaHgYuGuKQZTNIjXmMMAJe22jz4z2ZgJWgeAnQ7VF3nb0NoD6oC4EoiIXxU9wr5arwrpPZ5fohjIcM804y4M94r6uUIV9Zx7zJflyzhIdAdPVETriInc9ZGO/H/eKYKhT/tV66WnUhkBzp9+CxDVXgX9vJ/8GPa6zHPEGw/gTMHcXh6Uasz/lx3RIugQjG2omedCkdd4H8u0fVm7Kk3z3R80eBmhfIZo6aBXqtR9WOA/SNec3Aiy3MmWbArxhyc5UbgStytJzmx/UVnGOQwkskffGjKnDwc8AzznJBr9vA/LHGF44cNS+QAv1X4fFWV/igXy4UPTT+GHj1GL+WVIxbfJo6dbYgj61ge48P58VeMNUPelTNLdJ3pR/XCDM1LZAc6UXAh5zlCr/0q2tlB0jQSxzF/cANCm/oxTi8SCEFeiZwC4P79C0Jkr+4DRITNMMpEK8V8XHTRtfvsTeRDULgMnt/Se3i83RjuFD0Otw/vr0NGL70/+3pWvmho3iHoG/12OPdDfw+S2o1yH/y8stpxQJSH4eu747XDnUL5PnxnmvoayQ/JRRWAjPKihMGxWvwcNmpFWq2BSm5RpzurpGvLqaj049rzCB9AVA+5dmtsHy4AAhtdN0E8n2HTZevZb7XRq1RocgggUgFgtW1s6MLcK0VKbIqQ3qF39cLCzUpEAUxwGtg/pTS8gMfrzSoby7ox9rJuwa0Tor0XcNgd47UDApvGq8VB0gOGqRbMGe85xqOGUz5nsLTznJBr6vVad+aFEgO82xgibNckC+2ky14fGVcyOBr/H3JKCOpl9ZdnnAUjxDOdGjeyPZeygQ3jkjzo+J4nuoFrvCoas+ROqMS1wyamhSIgGv6VtCHl9D5335dI0NbUmFWWdFzo43WXrJo0AyajD29Qfl3lcHjkGMq9UZvI/9LwKMLKV+sxPWCpuYEkiO1XOFUZ7nCv/gZi7bUEr1UVtQylh+loilHyURbtnKBNP2FebOGPHIC2PdQvu5RtXw9puu+R52aE4hifMGjeFMrXb5M6zp4tuzvszbRMqq1kE00HyMwr7xMkYlGTBk0UG9Cxj3oH4lWOlcDroVIw6Pljjo1JRB73UPPdNfI1RWKZH5v+YciMionxALGpc4yC5locIRBAjHQig2a7Xup13tUnV1r6yI1JRBFv4CrmyPbtvo49hh8PXEEWJPLciO0IhtomS/IJx3F+w6j6S8TNKe3/EM/iTGMh8bOVrpuAZ5yFIugl1fyutWmZgRScsH+J3eNdW2lkti00fk7oDwy+iTFWJMl9Sqv4x8ifbiFcTsOr2KFO0ozRBNhSvmHJD0VTdxzERQV+Y67Rt++gZb5lbx2NakZgUDxA7hXzbv3MOnGSl3RnrVS5+67I0GyWdLfyDDvpAzmlBwtczKk35NANwKvcRxvNWBNeLOWOmbBemioqEAA9pK8AehyFDdYyP+q9LWrRU0IZC00CHi5X3/HL6e9oWij6yaB/3IUTwb9kmBtFtivGM8J+h/OgXmJH/kR71ccIVMnV7iLBbCC7T0K/8fDmvf64F8WCmpCIDMxVwGOaVP6BOs/qnF9i6YP4Lk2MCLZPTT64hcmjmdZxKhWerWfYqd1Kyd9HC0ebj7RoyYEovA+Z5nA7a1076rG9dvZ9pLS9CZB7xnD17L9yBl+tXAa0LNsJ/884LF70XA9kygSeYFsonkungHg9OfVtKOdbS8toesfFT4q8MIwhxZBvttA8bTX0vl3H02o2LrHyIjrXiucm6OlIj5h1STy7u4FEu8Wd+bZzq10VT2hpj1oz//oSY772R72rxJkldrjjjnYnr4PK8WblrJzm5/XVTByMMnPc46FPXSumYGZZ3C+9kZFLgbG7cYfBiIvEPHoXil6Q6Xzkw9Hacr216U/FWczzZNxrP/0sqfig/QBVkB/Dm5UcHgxGO8n4gKJdBcrR6od91ZXhYaqDM7DQoGEK0JKA0391bTBQG7A5a2gJ24gvbiadvhNpAWi4BXN/J52nt1adWMCJOnhd7WXxqq1IGAnCwUecJZb6JgjzoeJSAsE5C3uMr2l+nYESx9iOsumc3gQXUyve+/xjKJDZAWSI3U07lVpTZCYUMC0KJLAOtFZ1ka2ql0s2w7jN7idQltLzyqSRFYgFnKuu1Qyfu03jxZynKOgv0Ley8NSuvcbneUWEtmgDpEViHg03Qp3BGFL0Cja7CjybVvxOHDlkBc4JwhD/CCSAnmQ2TOA5c5yw+Ph1AMKzlksp+tH1VDvZ7Ci9MwiRyQFkqRpJdDoKH5mCZ1eefZqHkGc92KirvPjps1OHf2so7ixgcmRDOoQSYEIrPQoviOIfnc4UMc0rzwXjB2HAki4urqCrgrAnAkTSYEo8gaP0rocf9iIo8XQgCcqPJ+FxzMLP5ETiB3sWY91FPc30e9apKoXFMvRYuhfg7HEpgHrPuz4xOUsyHC0c0tC6ImcQAwavd5EGxeya1/VjQkJjnRpaiD/LzBjgFJ+edd40KDvlADMmRCRE4h4xLwCub/6loSHVjui4+XAatAPLyG/Lmib1MPtxCteWdiJoDevvt5ZIh4Po56wB8b5bwHfCtqWAUrP5OOOssgJJFItyCaapwKLnOUGMtGQOTE+IyTuc5YpsiSDOcXr+LASKYEUaViGq9WTbfXpXhJuWnk2jzuRT1IxTg7CnvESKYFY4DXIC7y/HeONV9fXQCPVzYqUQMSje1Xv448wY3kO1K1IbaCKlEBAvcJ6bqq6GTGjxcP1RzyjToaVyMxiZWhLQpfTrZsGEo8HYc8AW1jYeJAXPiPIadjB0iyFvwvaLRhPWKghMAc0BcZRoMdgx/CygGdBnmLInII6BzjRXilXL/+qArBPYb/AQZA9gu5V2Ktww2iyXVWSRhq2FBzrhQKvyNCW9DORUSWJTNqsHC2vVgxnBMJ8G/l0IAaVyJK6CuTLQdrghULHXhqPr3RkyZHIYXYrDHLHV3hVO/lAX2yjJUJdrIRX9+qxqpvhwrVZKRQIzJtOX+BBpBVcbi+CRqabFRmBWOC6qV43v9oIMpZoinuAPMg2+w9dwO7SH2cq54nSN5lCh8/nHA8ez8gYVaKhMBCZMQiebx0JvAWxaPmZ0H0OqJcLPthpAj6+l+QNo+3uPMlxk/ayb4bSMBOKMwWZBTpT4QjBmGP/X+cozB3KLIHbQuKf5vGMotOCREYg4o5/hYZAIO1kCxnazhXyXwX5PO57+vN2On88lnOWAs/tKv2JOPKYxzadyLQgkehilZJjulIbF+kLXCBgi6SNrisMZCmuqU2tanyqsFGkz6sb/Mqo5FWPhJEZzCPE/Tbd00Z+ZiAGDcMGWuZbGE+XFb3YRr4iGWejQhZzDzC9vKwfOcLn4N0VIRItiGC4AqMB+aobMgqKGM5EPqG0s5qoOwsVBv2R2DwVCYFA0etmum560GRIv0fga2VFjwuJNwdmUEgQxONZJWKB+IVitLjL6A7ClqHIkD5L0J8yqNsqjZY7JE8doq5nlUBdzzSMRGQWSz3eNhqaFmQjLQuL6G247qceKxT/msXcDLxol0kSdJrjFDOBl7DXSfYCB0D2gO4Re2/3iyAFhRcMiluKGFvayR94iPThSfgnRV8LHFFySXm0H/l+uPr30uWcyVIkEi1IJARiQModz8er2Q6GIsZHcKRhLqMRaH/542gjE6njaPtvFgYC/VnM7aBH6qDEOQpwYQI9V6E1PGGQvF5m0RBIJLpYuBN0IiFqQUCr7VHcABzHEFmlBBY/wlGHVdekofF+Vl69gvARiRZEwdVfFYzQjEFa6fpZjtQckEuBY7BfPPtLf55V9GkD40lFnxRkkoWVBlkg8ErsRTO/06etfg3P7Pb5nOOmiHS738QSj0H8QqHZuWBjUAyNQOzchF1XA1eP9bubaJ5axDhTkX8HBtZLbknScNlovl+geALoGSAm6EuKrJ/MYbeHa3a52OVOmx4P0n1DwDmoxSIZmjfkRFjEzv2baL6vn0T5ouc/9dL7jaXsfHQUp3iw9KeMcG3RT9D4grpTRoZukdeLSIxBxCPFcQ8a6D4HP+kncRGDn0XCIPHDLSx0BqWOJH3s93KadL30wkgkXE2ymAdwrCcoTG0n77eLeNXJ0TJHMTbjMc4CblGaPtzOtpdGOs96mk9MkGixUyHI/gKFLct4bqf/Fo8dO0212c/g35u2km+wu6fhJSoCKeJo7VrJJ4K+ueuYN7kR66MCSwEVeAHYpehuMF4E6yVB9iqyD6xDW0wFpioyU+EYsYOrDbnpyj6nPqhIJ1BQe50EYIoBhyscDizwOIel6E1JrMtKoUADJYu5D5haXtZEYXpIXPKHJPRjkC0sbOxht7Mr2Be0OACasK5R+MTA55cXHaT0ScpWM15+F2nZUSOhMBvkUOoAGVw3HIYg7y6QeAy4ZhSXqjT7cQhkLzIVCLVAQj8GOchBL1eNg1U3xIMoxJqVl2fGgsYVpKGJxtC/oENvYD/7mpIOMwVCMUAX+C+FJQz/otkLsgM0r3akkx7F2gdy6Adj2I3BiwOfLXtdZEpZfS9wwAIp/eBnKTrL3mnILIVZpXLn4mBekN/48E/1A1fWXaU/GYQhYyH0Amkk0eTsSmhIBNJK/tr1NK82aHgH6CKgBWSfYu0wkHuL8EA7+Ser1R1UkIdJz06gUxM07lnC9hdH/lbVcLUgFg2h//2F3sAi0uTxeg6FQABKaxWhCPtj+151/h0IkaPiITxaECv0v7/Qj0FiYoIk9AJJeC8IuhYOY0KPq7UQDFerEjZC38T1UezxGKRHXiC3QeI40m9U+AfQVuBo7EF2AntvSIfCowa6vo/iH8Ky6DcBXANyg/5YIBOlgWk9ziGHRlggm2ieWiDxcYF/1qEd9uYCxwusUIQkDZrDXAf6k0nMvnUhW/qqabNPeLQgDaGPzxv6LtZkJnuteURyG2sGs7VA4hGBb+LtWtJbWo13IgqnKnLjQXY/niV9UYVNrQSuFqSHvtC3IKEXSOlt6ZwmbdQI2F5OlnmvEbhX7P0i5RQErlESx7WRb2olf3gDxWmGvQh5q/M89vf11gypH0fsHricE6ejgbvAjERUfLEi7ax4GyQWYD6KvUGqnD5BVrXS+cehvpvF/Bjwfa86gS+0kr/WR1MrQpSdFSPxBhIP15I+jMiMQxZgrsItDhS+MZw4ANrI/wDkXq86hff6ZGJFeYjZ03C/jPeHXRwQEYF4rZw3IZERiCCu1HEAFoV/G+Up7h6i/IjxWVRdGpnqtfcj1E6KA0RFIK6baVAIixPeiFjeXdmDJ7NrlNuGrZBEJxkfRfpmexSPuMclDERCIOIRJM7CiERUDABBvfJ0TF6POcqoi/IGXw2qMkLCFTo2XFFphiYSAsFDIMOsIYSOBuRuPPrbBvwsw5ELhvtuDvPtwBlDVD84RHmoMDwimCgSmqAbwxERgXgFiYtG4DGARXR2ALd7VB0pFNdnMC/bwpxB/fQM5lFZ0v9b4Wa8u2jdDRQ/4VEeQsIdGXM4Qr+SDnZz7O6ERyPw2ABC4mNK8XW4FwhnCfywh+R3s6T/BtpXOsYcZs9gt8KKRex8eqgDwoQdZtT5bwlPZMzhiFuQKtHKs3mL4qkMnXg0CXoi0Ap4pXsYYLOBsTwqWWJtotuCREIgRY+bKREagwywlJ3bmpi1GLhcYawJNg8AX99D42uX0PFkBcyrJF6RMSMhkIh0sYxu5xg3KtHBnZRcZ76lcP0GWt5gYbzOgJMU5go6Q5FDIQgFLSrGs8ADQvGmVrqjmrPQ9azCFBlzOCIhELC83jaRFMgA9ipy972A5yp5jeFqQXpJREIgkehitZH/O253kxkPMrc5CHtiRs/DzGnBkZ8QOHgynV5ey6EjEgIp5bl4wlmeoDEy+bbrlQSNXimfHw9P7pLhiYRAABRc6YQlQgnp6xf1EohXauhQEhmB2AnpncQCiQAez8jrWYaTiAzSwYDHXEtNdvKZQMnQlhTyl4KsErRFkWkc8jRWCyiATAKdVMohWMTORXgQeEphg1K8cyk7t03MDvN0gUlKak072TBtZfUQiBWZFiQyAoHiXz0avEBbkNsgIXTfDXIagB7yCPEIdedZzusF3iskvpsh9ZN2uj4yHjvWMW+2YN0JJIWuNQqrwtLHF3i10xALiYxAItPFskg/iTs6n7mZowJzez8GcxnoaT6cSgT5cJbUuAQ/lcJMXt7zfWaO9Fk+2DRh1jFvtoJzprFvH/mtgRg0DiLTgrSTLWQxn8LRavRTfCXwlyBsEjvt2cDHDSD/rRi3tPPs1s0cNasfnWxRnAEcIegcwWhWtNl2vZBmkFl2SmiZBbrdYNK4VpcLJNIOb8a3AHdO5N/mB41YHl1geWKFR5TFsBIZgdjIX50DcwsWE5BAQNcqnN+AsX4xHYPynpWSaO5mAskCNzIvbWFdomhHP8aaoXOf68WO7d4njfeafiLg2kkpaGQG6BAxgQhsVLjQUXYK8OMg7Gkn/zxQsejp/RTfLcjVIDSgxSzmRmzRlZPGPRYbztmxagic4h6NSbVTZk+ISAnEggfcGyP09QGYMoi1zG+axsHjEiRG7UApyPMHkb+dQscwuU6kfFtqAmgb5elDETdMwbUTUijeH4Qt4yVSAgF9CHugXh6EbP4m0vNKm5KqSo4jTaV4HfSdD4kpY5k2UpRJaCGL+ZAgv7fQG9vJP1N+TALrLgujl+HzqA+E0ynPsxx43o2NzEsXsY50FBcsjPWBGDROIhEXq5ws6YdBl5aXKXJRO53/VX1bzHuB5T6drgjyyz10vq98EJslvUzR85wHC9oP5HpJ/G4mM4s97L4FOL9UvbuNvFeghKqRw3y7wi8dxQ+1kV8WiEHjJGItCAAPYCfNPITYUQirLhDQx0CWKzwN/EnQPSAXYY8LhmIfsBn7jb+Il+MMJ0AvmMqcz1EW7aSNTo886E46yJJaA3I+HPJdCxSv9HSKPhCELRMhcgIReEDhk4NLgxmHtNH14dvgoxdBcaAsg3kF6PWCfNhx+G5BrprEYT8YCD6dwZyicGoCWWDBQQv90+hDAQ1GkX1ly5SBCwQPgYj9cosUketiPcyclgRJ53pBfxOFWWFJKbyeeScbWPfz8ligz8I4Yykd91TqmhlS/yzId0sfn28jP6dS1xqJLcyZ1kNyN44XsJI029kRiZ2EA0SuBTmZXd1Z0ttAjy0rbuih4VTg90HZNUBJHHcweKDcaGD9IYP5HeDK0cYUznB0Sui/nFJCT8XaJ3BQkRft7pyNwmRBPjnkiapMDw2vx/3b2ho1cUAEBQIg6H0KxzpK30LAAslgfkKwrmPwrFMfdo7wWQKfB85Zj3nxUvIbRjqf0P810A++/FlK/3/5v4P/Fg4EOcejj3df9S2ZOJHxxSpHkbs8it+iAf5WsqSuEvgeZeIQuL6B4uw28rOLFFKC3gO8yoC/5DDfNPJZdUblLK4MCmLZri6DEGR1EPZMlLC9fEZFqY/7PI71AQNZsoTOjdW2J8OxM4WeXQzqVsn32ugc1O3JkX6rogOzbS81ICcOt36To+U0xfgMoAK9ipRW0VWw93m34b1qHtgYJEuqDSTjKO49SN+c1/P83iBsmgiR7GItZNe+0hrE6eXlRfQcoOoCMTh4vCLlY46s0vI5GOSehaLli3kz+7HeCnyXIWgdIaiDgmwgdYEiNzE4LV1gaQWG6F6tjaI4IKJdrBJ3OAvEo2mvBmK/0cuZm6Sj0X0cjm6VTGjFW0Bb6fpv4GeOqsC8ZS04x1mmyG+DsMUPIisQhd/inu9v20R6XrVt6SOxjbK1EODIfhpu3MLCQyLJYZ6jcOngb+oj/liggxwAFXr9Oe/YyGAe5eHBq0mPl1lUiKxASn5Lmx3FUoSzq22L7YYujuDUekEPu9dnMa/LYt6httdv+f1+aitdQyXGGSvPl3+QgJLTiN16OFvTXBB+cn4RWYEAiN2KOLDeVn1LIIF8AnDO878G+By2aMt/OD2CvPuiwa3OuLFIOF3gg4rA6Lr36vmMokOkBaKoK6WAIqeNlHOjEiymo1PQ1zHyfH+XIGe30unbJq+C3ZIe2o6saNV/lBtJvwIP9xLD1bJGi0gLpI2uLODsxwv0B5LcspWuHa3kTwNdiT2z9BR2fsU+YDPol5WmV42UuHOsnELHC6Xc6xawOYn1Uz/PPxr60Utxd68eaaUzUhuknERyHaScDOZnBb7lKO7cSv5ov7owUSGDOWUb+d5q/7vXQsMMzB041mQU/WQ7Xd+rpi1+E+kWBCBJ8Ubc0U7Sx9FyutfxtUw7+QNBvBRmYK7EvWDZZ6C/qLYtfhN5gSxi53OAhxuD8b6qG1O/uO61wO0RTtdwiMgLpMTPnQUK5+ZoCczlu17YRPNcPKfWrRuqbkwFqAmB7CH/O9xTrI1apVYki/m2DOajWcyuLOYPyxcIa50Cxvtx7IFX6HiK7j8EZJKv1IRAVkC/wo3OcoFPr2V+k9d3/EX+QWAhtgPhZb3svqLy1wyetcxvEuTjznJB/7NWJkhqQiA2iX/H8VAUmmfQ+55KX1mxtg/+LGdW+pphYDp9l+LO9NVvoFWfZq4UNSOQdp7dimfgBuPytRX2WjZcCTldzos1hx24m0+7a+SWJXRvd5dHk5oRCIAg1+ByYNRjZ2Be6PkFnyiSeLaS5w8jC0i9A3B6LKhF/7VB2FMpakog9qqtrPGo+mIldxsaMCjfnkLU0jSPCfteyuUeVXcsZeejVTeogtSUQAAE6xqP4kU5UmdU6pqGI8Go4d5RV1PkMM8GXAGyDaip1gNqUCCtdP3ZO/6ScWWlWpEiMmgHn4VOq8R1wkDpHn7VXSP3LiG/ruoGVZiaEwiA2mMRZ+nSHOZFlbieRbGv/LMBzpi0NUOO1MV4BtG2vll1Y6pATc62KEgOMwO0Oqq2NjHr1QORDf0iS+oNIH8e+CzwgkXi5NLMWkV4iPThCfR8Aw4HO5qioH9qpati3bsnOW7SHg48DswfXCPrW+l8bRhCnvpNJIM2jISA5uDzCs4dewsO8uLHget9vj4qILAAAAZaSURBVOKgjUIKs4Xio1nMvwC7QF7EDvS23w78pr1AWfA4o0/t2Fkl+61GkMXA4QLTFBxp5iQJugyYVP6LVKSYwfxEO/kf+fvvs9nLgU/iEgdYyOW1KA6o0RZkgCzmGsA5ON+bwHiVMyPUeFnHvMmTsHYC0/04nw8cUFKH+Z3pdhPpef12dijn+OrONvKBBMuoBjU5BhlAkM/jdnmY3o/l3D8ybiajJxAecQBMSbDT9ZafKP3ot3GLo9+i+EW/rxUmalogpd1sP3GWC7wjg+nLfpECfd2496OMhj7gGWAd9jbdv4m9njLRrsrzjfT6GgM3a0+Ru/abC/yo1tY9nNR0FwsORT18DLfP0I6D9J3kR0Cz9cxblcD6pNoJRRuwt9nm7T+aVyRvQKeFdBvQ0UehexnP7RzaZnOKgTW1iE6HxEzDnjaeqhjTBeswkEZxvM3tlAfyXJG+NeNNoeDFg8yekaTpEeCo8nKBnULjK5ew/UW/rhVGal4gAFnS7wV17U8Q+HEr+cuCsCkqZDH/DfiAs1yR97bT+Z8BmFRV6kIgpWnfu4F/dFfpyja6Ak+bEEYypM8S9A7cv5P/aSV/eq3OXJVT02OQAcReI3g/4OxOCciNDzNn1Nlp64UHmdtsoD/DLY79FsUP1YM4oE4EAnZIHsBrxmVuguQNWkf3YiQUjCQNNyk0O+sE+exSdm4Lwq4gqKsfRau9gHanR9WZOcyvVNuesJIjdSWuQNsArFlCp2tWsJapK4EIaAPF9wNeszxfzZGq6L6RKJDBPA/kS85ygZ1FCu+rl67VAHUlEBgIE6Tvxf2gRZGfb6RlYRB2hYEs814j9t5+57jDAi7xc/o4KtSdQABKs1ZXelTNKGL8/mHMmvXGHYocR5pg3YmnV4D8Syv5/6m6USGgLqZ5vVAwcpi/wTvpzqYCPcuX8cIej7qao7SYeh8em6CAX7eSv7DeulYD1GULAiBgKU3vAh73qF6UpGn1FubU7ManAe7niOlCz114iENhy0H63lOv4oA6bkEG2EDLfAvjL9gxrQYh8MAkCmcuZFcgCWkqje3SoqsVeaNHdV7QU0rT43VL3bYgAyyhe7vCWXhkZVI4tYfk6gzHzgzAtIqymaNmGfCHIcSxx0DOqndxQCwQANrJ5yy4ANvJ0Mly6LmnllbbMxydKtB/j3okvAEOCnJBEOm0w0gskBJLyd9tYVyIRwJMgcUJGh9YT/OJAZjmK/ZUbmEddno4Jz2g5/ud4CfKxAIpYykddwlchGeWWD3WILHOXkiLJvZCqPUAHttmgR4L48LYcXMwdT9I9yKH+SaFX+G9U1CBbympK/ze1loptrCwsZfdV6sdKtTrme9R5Lx2OtdW27awEwtkCHKk2hW5Cxgqx0gmgVy8mM4nqmnXWNlI+hVFO9OTR6geAJ5TWNlOPldNu6JCLJBhWE/zsQYNt4MONfboAa6dwZRvHs9THt2y4MjQloT8ZYJ8A5g6xGGPNFA8dxE7n66mbVEiFsgI3M8R0yfTeBNwztBHyaNgfTYs/fccLSsV49vAq4c+Sn7VRN97anWNxy9igYyCklvKZ4GrcGRTcvBHkCva6HywSqYNYgPmKZZt44phDutT5EttdH6nnlfIR0sskDFQGpf8Ajh+hEPvM+D6J8nfWelMS7dBYgGpcwX59BDrGodQeELQd5byy8eMglggYySDOUXga8CnGDkyZRdws4Hc7OfCm4JkMBcn4GKFi/Fwk3FQUPgOcGU7+QMjHBtTRiyQcZIjvUjRHwGnjPIrnQprDOTPBsXsE3Q/PtrW5TZIvIKWV/aTaBd0OXAm7rzkQ3G/YlzWTscjozw+poxYIBPAjpaSOh/kauCEMX79gMLTAtsFuhTZV4rZiyCTBJ0GalrI0QLHAFPGeP7HDPjiEvK3j/F7MWXEAvGBtdAwk9Q7FPkMsChgczaAXr+HrltXQH/AtkSeWCA+sx7zzQbyIdCzgUlVumyvwG9BfhL7UflLLJAKsY55sxvRtwl6HrAc8Dtfew9wryC/aSBx62t4ZrfP548hFkhVyGBOAVlhwKmg7QrtuHJ+DI/ACwoZkIyFPCBY98QzUpUnFkhAbKJ5bhHjKLWDQh8BTBFkEkBZgp3ngR2CPtNK964AzY2JiYmJiYmJiYmJiYmJiYmJiYmJiYmJIv8fi/p/aF4/sRoAAAAASUVORK5CYII=';
+    const logoImg = 'data:image/png;base64,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'; // 기존 로고 base64 전체 복사
+    const year = document.getElementById('status-year').value;
+    let allInstruments = [];
+    Object.values(instrumentsByYear).forEach(yearArr => {
+        allInstruments = allInstruments.concat(yearArr);
+    });
+    const inst = allInstruments.find(inst => inst.num === num);
+    if (!inst) {
+        alert('계측기를 찾을 수 없습니다. 번호: ' + num);
+        return;
+    }
+    const yearData = inst.yearData && inst.yearData[year];
+    const calibDate = yearData ? yearData.calibDate : '';
+    const maxError = yearData ? yearData.maxError : '';
+    const result = yearData ? yearData.result : '';
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.addFileToVFS("NotoSansKR-VariableFont_wght-normal.ttf", font);
+    doc.addFont("NotoSansKR-VariableFont_wght-normal.ttf", "NotoSansKR-VariableFont_wght", "normal");
+    doc.setFont("NotoSansKR-VariableFont_wght");
+    doc.setFontSize(20);
+    doc.text('계측기 검교정 성적서', 105, 30, { align: 'center' });
+    const tableData = [
+        ['계측기명', inst.name],
+        ['Service', inst.service],
+        ['계측기 유형', inst.type],
+        ['교정번호', inst.num],
+        ['교정일', inst.date],
+        ['교정주기', inst.cycle + '년'],
+        ['차기 교정 예정일', inst.nextDate],
+        ['허용오차', '±' + inst.allowError + (inst.unit ? ' ' + inst.unit : '')],
+        ['검교정일', calibDate || '-'],
+        ['최대오차', maxError || '-'],
+        ['검교정 결과', result || '-']
+    ];
+    let y = 50;
+    doc.setFontSize(12);
+    doc.setFont('NotoSansKR-VariableFont_wght', 'normal');
+    tableData.forEach((row, index) => {
+        if (index % 2 === 0) {
+            doc.setFillColor(248, 249, 250);
+            doc.rect(20, y - 5, 170, 10, 'F');
+        }
+        doc.setFont('NotoSansKR-VariableFont_wght', 'normal');
+        doc.text(row[0], 25, y);
+        doc.setFont('NotoSansKR-VariableFont_wght', 'normal');
+        doc.text(row[1], 120, y);
+        y += 12;
+        
+    });
+    
+// 기준값/측정값 표
+// 기준값/측정값 표 (제목 삭제)
+// 단위 추출
+    let unit = '';
+    if (inst.unit) {
+        unit = inst.unit;
+} else if (inst.allowError) {
+        unit = extractUnitFromAllowError(inst.allowError);
+}
+
+// 표 그리기 (y값 조정)
+    const tableX = 30;
+    const tableY = y; // y += 10 삭제했으므로 그대로 사용
+    const colWidth = 75;
+    const rowHeight = 8;
+
+// 표 그리기
+    doc.setDrawColor(100, 100, 100);
+    doc.rect(tableX, tableY, colWidth * 2, rowHeight * 4);
+    doc.setFont('NotoSansKR-VariableFont_wght', 'normal');
+    doc.text('기준값', tableX + colWidth/2, tableY + 5, {align: 'center'});
+    doc.text('측정값', tableX + colWidth + colWidth/2, tableY + 5, {align: 'center'});
+    doc.line(tableX + colWidth, tableY, tableX + colWidth, tableY + rowHeight * 4);
+    for (let i = 1; i <= 3; i++) {
+    doc.line(tableX, tableY + rowHeight * i, tableX + colWidth * 2, tableY + rowHeight * i);
+}
+    doc.setFont('NotoSansKR-VariableFont_wght', 'normal');
+    doc.setFontSize(10);
+    const std1 = (yearData && yearData.std1) || '';
+    const meas1 = (yearData && yearData.meas1) || '';
+    const std2 = (yearData && yearData.std2) || '';
+    const meas2 = (yearData && yearData.meas2) || '';
+    const std3 = (yearData && yearData.std3) || '';
+    const meas3 = (yearData && yearData.meas3) || '';
+    const formatWithUnit = (value, unit) => {
+    if (!value) return '';
+    if (!unit) return value;
+    let displayUnit = unit;
+    if (unit === '℃') displayUnit = '°C';
+    return `${value} ${displayUnit}`;
+};
+    doc.text(formatWithUnit(std1, unit), tableX + colWidth/2, tableY + rowHeight + 5, {align: 'center'});
+    doc.text(formatWithUnit(meas1, unit), tableX + colWidth + colWidth/2, tableY + rowHeight + 5, {align: 'center'});
+    doc.text(formatWithUnit(std2, unit), tableX + colWidth/2, tableY + rowHeight * 2 + 5, {align: 'center'});
+    doc.text(formatWithUnit(meas2, unit), tableX + colWidth + colWidth/2, tableY + rowHeight * 2 + 5, {align: 'center'});
+    doc.text(formatWithUnit(std3, unit), tableX + colWidth/2, tableY + rowHeight * 3 + 5, {align: 'center'});
+    doc.text(formatWithUnit(meas3, unit), tableX + colWidth + colWidth/2, tableY + rowHeight * 3 + 5, {align: 'center'});
+    // (인) 부분 및 도장 이미지
+    // 표 출력 후 y값을 반드시 사용!
+    y += rowHeight * 4 + 20; // 표 출력 후 y값 증가(이미 있다면 중복 추가 X)
+
+    // 콘솔로그 추가 (디버깅용)
+    console.log('표 출력 후 y값:', y);
+    console.log('표 높이:', rowHeight * 4);
+
+    // (인) 문구와 도장 위치 계산 (기존 코드 대신)
+    const signText = '계측기 담당 파트장';
+    const inText = '(인)';
+    const signTextWidth = doc.getTextWidth(signText);
+    const inTextWidth = doc.getTextWidth(inText);
+    const gap = 15; // ← 여백을 넉넉하게!
+    const totalWidth = signTextWidth + inTextWidth + gap;
+    const startX = 105 - totalWidth / 2;
+    const signTextX = startX;
+    const inX = signTextX + signTextWidth + gap;
+
+    // 로고 위치 (signY 계산 전에 위치해야 함)
+    const imgWidth = 60;
+    const imgHeight = 25;
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const logoY = pageHeight - imgHeight - 10;
+
+    // (인) 문구와 도장 위치를 표와 로고 사이 중간에!
+    let signY = y + 50; // 표 아래 50mm 위치에 (인) 문구
+
+      // 만약 signY가 로고와 너무 가까우면, 로고 위로 올림
+    const minGap = 30; // (인)~로고 최소 간격
+    if (signY + minGap > logoY) {
+        signY = logoY - minGap;
+}
+    
+    // 도장 위치: (인) 중앙에 정확히
+    const sealWidth = 18;
+    const sealHeight = 18;
+    const sealX = inX + inTextWidth / 2 - sealWidth / 2;
+    let sealY = signY - sealHeight / 2 -2;
+
+
+    // 콘솔로그 추가 (디버깅용)
+    console.log('signY:', signY);
+    console.log('sealX:', sealX);
+    console.log('sealY:', sealY);
+    console.log('logoY:', logoY);
+    console.log('(인) 글자 위치:', inX);
+
+    // 표가 길어서 (인)/도장/로고가 겹칠 경우 조정
+    if (sealY + sealHeight > logoY - 10) {
+        console.log('겹침 발생! signY 조정');
+        signY = logoY - sealHeight - 40;
+        sealY = signY - sealHeight / 2 - 1;
+        console.log('조정 후 signY:', signY);
+        console.log('조정 후 sealY:', sealY);
+}
+
+    // 출력 (기존 코드 대신)
+    doc.setFontSize(14);
+    doc.setFont('NotoSansKR-VariableFont_wght', 'normal');
+    doc.text(signText, signTextX, signY);
+    doc.text(inText, inX, signY);
+    doc.addImage(sealImg, 'PNG', sealX, sealY, sealWidth, sealHeight);
+    doc.addImage(logoImg, 'PNG', 105 - imgWidth/2, logoY, imgWidth, imgHeight);
+    doc.save('계측기_검교정_성적서_' + inst.num + '.pdf');
+}
+</script>
